@@ -1,28 +1,29 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const path = require("path");
 
 const expenseRoutes = require("./routes/expenseRoutes");
+
 const app = express();
 
-// Middleware
 app.use(cors());
 app.use(express.json());
+
+// Serve frontend files
+app.use(express.static(path.join(__dirname, "../frontend")));
+
+mongoose.connect("mongodb://127.0.0.1:27017/moneypilot")
+.then(()=>console.log("MongoDB Connected"))
+.catch(err=>console.log(err));
+
 app.use("/api", expenseRoutes);
 
-// MongoDB Connection
-mongoose.connect("mongodb://127.0.0.1:27017/moneypilot")
-.then(() => console.log("MongoDB Connected"))
-.catch((err) => console.log(err));
-
-
-// Test Route
-app.get("/", (req, res) => {
-    res.send("MoneyPilot Backend Running");
+// Open dashboard on localhost
+app.get("/", (req,res)=>{
+    res.sendFile(path.join(__dirname, "../frontend/pages/dashboard.html"));
 });
 
-// Server
-const PORT = 5000;
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+app.listen(5000, ()=>{
+    console.log("Server running on port 5000");
 });
