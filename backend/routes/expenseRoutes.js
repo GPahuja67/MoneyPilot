@@ -1,47 +1,114 @@
 const express = require("express");
 const router = express.Router();
-const Expense = require("../models/Expense");
 
-// Add Expense
-router.post("/add-expense", async (req, res) => {
-    try {
-        const { amount, category, note, date } = req.body;
+const Transaction = require("../models/transaction");
 
-        const newExpense = new Expense({
-            amount,
-            category,
-            note,
-            date
-        });
 
-        const savedExpense = await newExpense.save();
-        res.status(201).json(savedExpense);
+// Add Transaction (income / expense / saving)
 
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
+router.post("/add-transaction", async (req,res)=>{
+
+ try{
+
+  const {amount,type,category,note} = req.body;
+
+  const transaction = new Transaction({
+   amount,
+   type,
+   category,
+   note
+  });
+
+  const savedTransaction = await transaction.save();
+
+  res.json(savedTransaction);
+
+ }catch(err){
+
+  res.status(500).json({message:err.message});
+
+ }
+
 });
 
 
-// Get All Expenses
-router.get("/expenses", async (req, res) => {
+
+// Get All Transactions
+
+router.get("/transactions", async (req, res) => {
+
     try {
-        const expenses = await Expense.find().sort({ date: -1 });
-        res.json(expenses);
+
+        const transactions = await Transaction.find().sort({ createdAt: -1 });
+
+        res.json(transactions);
+
     } catch (error) {
+
         res.status(500).json({ message: error.message });
+
     }
+
 });
 
 
-// Delete Expense
-router.delete("/expense/:id", async (req, res) => {
+
+// Delete Transaction
+
+router.delete("/transaction/:id", async (req, res) => {
+
     try {
-        await Expense.findByIdAndDelete(req.params.id);
-        res.json({ message: "Expense deleted" });
+
+        await Transaction.findByIdAndDelete(req.params.id);
+
+        res.json({ message: "Transaction deleted" });
+
     } catch (error) {
+
         res.status(500).json({ message: error.message });
+
     }
+
 });
+
+
+
+// Finance Summary API
+
+router.get("/finance-summary", async (req,res)=>{
+
+ try{
+
+  const transactions = await Transaction.find();
+
+  const income = transactions
+   .filter(t=>t.type==="income")
+   .reduce((sum,t)=>sum+t.amount,0);
+
+  const expenses = transactions
+   .filter(t=>t.type==="expense")
+   .reduce((sum,t)=>sum+t.amount,0);
+
+  const savings = transactions
+   .filter(t=>t.type==="saving")
+   .reduce((sum,t)=>sum+t.amount,0);
+
+  const balance = income - expenses - savings;
+
+  res.json({
+   income,
+   expenses,
+   savings,
+   balance
+  });
+
+ }catch(err){
+
+  res.status(500).json({message:err.message});
+
+ }
+
+});
+
 
 module.exports = router;
