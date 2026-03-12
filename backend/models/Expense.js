@@ -2,9 +2,26 @@ const mongoose = require("mongoose");
 
 const ExpenseSchema = new mongoose.Schema(
 {
-  amount: Number,
-  category: String,
-  note: String
+  amount: {
+    type: Number,
+    required: true
+  },
+
+  type: {
+    type: String,
+    enum: ["income", "expense"],
+    required: true
+  },
+
+  category: {
+    type: String,
+    required: true
+  },
+
+  note: {
+    type: String
+  }
+
 },
 {
   timestamps: true
