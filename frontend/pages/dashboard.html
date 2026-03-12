@@ -4,96 +4,187 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>MoneyPilot — Dashboard</title>
+
+  <!--
+    FONTS
+    ─────
+    Cabinet Grotesk  → headlines, card values (strong geometric personality)
+    Instrument Sans  → UI body text (clean, legible)
+    JetBrains Mono   → numbers, amounts (technical precision)
+  -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
   <!-- Chart.js v4 from CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="../css/style.css" />
+
+  <link rel="stylesheet" href="../css/style.css"/>
 </head>
 <body>
 
-  <!-- ═══════════════════════════════════════
-       HEADER
-  ═══════════════════════════════════════ -->
+  <!-- ╔══════════════════════════════════════════╗
+       ║  HEADER                                  ║
+       ╚══════════════════════════════════════════╝ -->
   <header class="site-header">
     <div class="header-inner">
       <div class="logo">
-        <span class="logo-mark">✦</span>
-        <span class="logo-text">Money<em>Pilot</em></span>
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L2 7l10 5 10-5-10-5z" fill="currentColor" opacity="0.9"/>
+          <path d="M2 17l10 5 10-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M2 12l10 5 10-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <span class="logo-wordmark">MoneyPilot</span>
       </div>
-      <nav class="header-nav">
-        <span class="nav-label">Personal Finance Dashboard</span>
-        <div class="status-dot" id="statusDot" title="Backend connection status"></div>
+
+      <nav class="header-center">
+        <a href="#" class="nav-link nav-link--active">Dashboard</a>
+        <a href="#" class="nav-link">Analytics</a>
+        <a href="#" class="nav-link">Accounts</a>
       </nav>
+
+      <div class="header-right">
+        <span class="header-date" id="headerDate"></span>
+        <div class="status-pill" id="statusPill">
+          <span class="status-dot"></span>
+          <span class="status-label">Connected</span>
+        </div>
+      </div>
     </div>
   </header>
 
-  <!-- ═══════════════════════════════════════
-       MAIN CONTENT
-  ═══════════════════════════════════════ -->
-  <main class="dashboard-root">
+  <!-- ╔══════════════════════════════════════════╗
+       ║  MAIN DASHBOARD                          ║
+       ╚══════════════════════════════════════════╝ -->
+  <main class="dashboard">
 
-    <!-- ── ROW 1: Summary Cards ── -->
-    <section class="summary-row" aria-label="Summary statistics">
+    <!-- ──────────────────────────────────────────
+         ROW 1  ·  KPI SUMMARY CARDS + SPARKLINES
+         ──────────────────────────────────────────
+         Four cards in a horizontal grid.
+         Each card has:
+           • eyebrow label
+           • large monospaced amount
+           • delta badge (30-day change)
+           • sparkline canvas (Chart.js, no axes)
 
-      <div class="summary-card summary-card--accent">
-        <p class="card-eyebrow">Total Spent</p>
-        <h2 class="card-big" id="totalAmount">$0.00</h2>
-        <p class="card-sub" id="txnCount">0 transactions</p>
-        <div class="card-glow"></div>
-      </div>
+         JavaScript: renderKpiCards() + renderSparklines()
+         CSS: .kpi-grid, .kpi-card, .kpi-card__chart
+    ──────────────────────────────────────────── -->
+    <section class="kpi-grid" aria-label="Financial summary">
 
-      <div class="summary-card">
-        <p class="card-eyebrow">Transactions</p>
-        <h2 class="card-big" id="txnCountBig">0</h2>
-        <p class="card-sub">expenses logged</p>
-      </div>
+      <!-- Income -->
+      <article class="kpi-card kpi-card--income">
+        <div class="kpi-card__top">
+          <span class="kpi-eyebrow">Total Income</span>
+          <span class="kpi-badge kpi-badge--income" id="incomeDelta">—</span>
+        </div>
+        <p class="kpi-amount" id="kpiIncome">$0.00</p>
+        <!--
+          Sparkline container:
+          Fixed height so Chart.js has a stable bounding box.
+          canvas id matches drawSparkline() call in dashboard.js
+        -->
+        <div class="kpi-spark">
+          <canvas id="sparkIncome"></canvas>
+        </div>
+      </article>
 
-      <div class="summary-card">
-        <p class="card-eyebrow">Top Category</p>
-        <h2 class="card-big card-big--sm" id="topCategory">—</h2>
-        <p class="card-sub" id="topCategoryAmt">$0.00 spent</p>
-      </div>
+      <!-- Expenses -->
+      <article class="kpi-card kpi-card--expense">
+        <div class="kpi-card__top">
+          <span class="kpi-eyebrow">Total Expenses</span>
+          <span class="kpi-badge kpi-badge--expense" id="expenseDelta">—</span>
+        </div>
+        <p class="kpi-amount" id="kpiExpense">$0.00</p>
+        <div class="kpi-spark">
+          <canvas id="sparkExpense"></canvas>
+        </div>
+      </article>
+
+      <!-- Savings -->
+      <article class="kpi-card kpi-card--saving">
+        <div class="kpi-card__top">
+          <span class="kpi-eyebrow">Total Savings</span>
+          <span class="kpi-badge kpi-badge--saving" id="savingDelta">—</span>
+        </div>
+        <p class="kpi-amount" id="kpiSaving">$0.00</p>
+        <div class="kpi-spark">
+          <canvas id="sparkSaving"></canvas>
+        </div>
+      </article>
+
+      <!-- Balance -->
+      <article class="kpi-card kpi-card--balance">
+        <div class="kpi-card__top">
+          <span class="kpi-eyebrow">Available Balance</span>
+          <span class="kpi-badge kpi-badge--balance" id="balanceDelta">income − exp − sav</span>
+        </div>
+        <p class="kpi-amount" id="kpiBalance">$0.00</p>
+        <div class="kpi-spark">
+          <canvas id="sparkBalance"></canvas>
+        </div>
+      </article>
 
     </section>
 
-    <!-- ── ROW 2: Charts ── -->
-    <section class="charts-row" aria-label="Spending charts">
+    <!-- ──────────────────────────────────────────
+         ROW 2  ·  CHART PANELS
+         ──────────────────────────────────────────
+         Left:  doughnut pie (category spending mix)
+         Right: grouped bar  (monthly income/expense/saving)
 
-      <!-- Pie: Category Breakdown -->
-      <div class="chart-card">
-        <div class="chart-card__header">
-          <p class="card-eyebrow">By Category</p>
-          <h3 class="chart-title">Spending Breakdown</h3>
-        </div>
-        <div class="chart-wrap chart-wrap--pie">
+         JavaScript: renderPieChart() + renderBarChart()
+         CSS: .charts-row, .chart-panel
+    ──────────────────────────────────────────── -->
+    <section class="charts-row">
+
+      <div class="chart-panel">
+        <header class="panel-header">
+          <div>
+            <p class="panel-eyebrow">Breakdown</p>
+            <h2 class="panel-title">Spending Mix</h2>
+          </div>
+        </header>
+        <div class="chart-area chart-area--pie">
           <canvas id="pieChart"></canvas>
-          <div class="chart-empty hidden" id="pieEmpty">No data to display</div>
+          <p class="chart-empty hidden" id="pieEmpty">No expense data yet</p>
         </div>
       </div>
 
-      <!-- Bar: Monthly Spending -->
-      <div class="chart-card">
-        <div class="chart-card__header">
-          <p class="card-eyebrow">Over Time</p>
-          <h3 class="chart-title">Monthly Spending</h3>
-        </div>
-        <div class="chart-wrap chart-wrap--bar">
+      <div class="chart-panel chart-panel--wide">
+        <header class="panel-header">
+          <div>
+            <p class="panel-eyebrow">Over Time</p>
+            <h2 class="panel-title">Monthly Activity</h2>
+          </div>
+        </header>
+        <div class="chart-area chart-area--bar">
           <canvas id="barChart"></canvas>
-          <div class="chart-empty hidden" id="barEmpty">No data to display</div>
+          <p class="chart-empty hidden" id="barEmpty">No data yet</p>
         </div>
       </div>
 
     </section>
 
-    <!-- ── ROW 3: Form + Table ── -->
+    <!-- ──────────────────────────────────────────
+         ROW 3  ·  ADD FORM  +  RECENT TRANSACTIONS
+         ──────────────────────────────────────────
+         Left:  add-transaction form
+         Right: Recent Transactions panel (V3 new)
+                Shows latest 5 transactions with type
+                colour-coding: income=teal, expense=red, saving=blue
+
+         JavaScript: handleAdd() + renderRecentTransactions()
+         CSS: .bottom-row, .panel--form, .panel--recent,
+              .recent-list, .recent-item
+    ──────────────────────────────────────────── -->
     <section class="bottom-row">
 
-      <!-- Add Expense Form -->
+      <!-- Add Transaction Form -->
       <div class="panel panel--form">
-        <p class="card-eyebrow">New Expense</p>
-        <h3 class="panel-title">Add Transaction</h3>
+        <p class="panel-eyebrow">New Entry</p>
+        <h2 class="panel-title">Add Transaction</h2>
 
         <div class="form-group">
           <label for="amount" class="form-label">Amount ($)</label>
@@ -102,9 +193,21 @@
         </div>
 
         <div class="form-group">
+          <label for="txnType" class="form-label">Type</label>
+          <select id="txnType" class="form-input form-select">
+            <option value="">Select type</option>
+            <option value="income">💰 Income</option>
+            <option value="expense">💸 Expense</option>
+            <option value="saving">🏦 Saving</option>
+          </select>
+        </div>
+
+        <div class="form-group">
           <label for="category" class="form-label">Category</label>
           <select id="category" class="form-input form-select">
             <option value="">Select category</option>
+            <option value="Salary">💼 Salary</option>
+            <option value="Freelance">🖥 Freelance</option>
             <option value="Food & Dining">🍽 Food &amp; Dining</option>
             <option value="Transport">🚗 Transport</option>
             <option value="Shopping">🛍 Shopping</option>
@@ -112,6 +215,7 @@
             <option value="Health">💊 Health</option>
             <option value="Utilities">💡 Utilities</option>
             <option value="Education">📚 Education</option>
+            <option value="Investment">📈 Investment</option>
             <option value="Other">📦 Other</option>
           </select>
         </div>
@@ -119,71 +223,117 @@
         <div class="form-group">
           <label for="note" class="form-label">Note</label>
           <input type="text" id="note" class="form-input"
-                 placeholder="What was this for?" maxlength="100"/>
+                 placeholder="Optional description" maxlength="120"/>
         </div>
 
-        <button class="btn-primary" id="addExpenseBtn">
-          <span class="btn-text">Add Expense</span>
-          <span class="btn-icon">→</span>
+        <button class="btn-primary" id="addTxnBtn">
+          <span class="btn-text">Add Transaction</span>
+          <span class="btn-icon" aria-hidden="true">＋</span>
         </button>
 
-        <div class="form-message" id="formMessage"></div>
+        <p class="form-message" id="formMessage"></p>
       </div>
 
-      <!-- Expense Table -->
-      <div class="panel panel--table">
-        <div class="table-toolbar">
-          <h3 class="panel-title">Transactions</h3>
-          <div class="toolbar-controls">
-            <input type="text" id="searchInput"
-                   class="search-input" placeholder="Search…"/>
-            <!-- Category filter dropdown (V2 feature) -->
-            <select id="filterCategory" class="filter-select">
-              <option value="">All Categories</option>
-              <option value="Food & Dining">Food &amp; Dining</option>
-              <option value="Transport">Transport</option>
-              <option value="Shopping">Shopping</option>
-              <option value="Entertainment">Entertainment</option>
-              <option value="Health">Health</option>
-              <option value="Utilities">Utilities</option>
-              <option value="Education">Education</option>
-              <option value="Other">Other</option>
-            </select>
+      <!-- Recent Transactions (V3 NEW) -->
+      <div class="panel panel--recent">
+        <header class="panel-header panel-header--between">
+          <div>
+            <p class="panel-eyebrow">Latest Activity</p>
+            <h2 class="panel-title">Recent Transactions</h2>
           </div>
+          <button class="btn-text-link" id="viewAllBtn">View all ↓</button>
+        </header>
+
+        <!-- Loading spinner shown until first data arrives -->
+        <div class="recent-loader" id="recentLoader">
+          <div class="spinner spinner--sm"></div>
         </div>
 
-        <div class="loading-state" id="loadingState">
-          <div class="spinner"></div>
-          <p>Fetching transactions…</p>
-        </div>
+        <!--
+          List injected by renderRecentTransactions() in dashboard.js.
+          Each <li> gets class recent-item--income/expense/saving for colour.
+        -->
+        <ul class="recent-list" id="recentList" role="list"></ul>
 
-        <div class="empty-state hidden" id="emptyState">
-          <div class="empty-icon">✦</div>
-          <p class="empty-title">No expenses yet</p>
-          <p class="empty-sub">Add your first transaction using the form.</p>
-        </div>
-
-        <div class="table-wrapper hidden" id="tableWrapper">
-          <table class="expense-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Category</th>
-                <th>Note</th>
-                <th class="col-amount">Amount</th>
-                <th class="col-action"></th>
-              </tr>
-            </thead>
-            <tbody id="expenseTableBody"></tbody>
-          </table>
-        </div>
+        <p class="recent-empty hidden" id="recentEmpty">
+          No transactions yet — add one using the form.
+        </p>
       </div>
 
     </section>
+
+    <!-- ──────────────────────────────────────────
+         ROW 4  ·  FULL TRANSACTION TABLE
+         ──────────────────────────────────────────
+         Search + type filter + category filter.
+         Full history with delete buttons.
+
+         JavaScript: renderTable() + handleDelete()
+         CSS: .panel--table, .txn-table
+    ──────────────────────────────────────────── -->
+    <section class="panel panel--table" id="fullTableSection">
+      <header class="panel-header panel-header--between" style="margin-bottom:18px">
+        <div>
+          <p class="panel-eyebrow">All Records</p>
+          <h2 class="panel-title">Transaction History</h2>
+        </div>
+        <div class="toolbar-controls">
+          <input  type="text"   id="searchInput"    class="ctrl-input"  placeholder="Search…"/>
+          <select               id="filterType"      class="ctrl-select">
+            <option value="">All Types</option>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+            <option value="saving">Saving</option>
+          </select>
+          <select               id="filterCategory"  class="ctrl-select">
+            <option value="">All Categories</option>
+            <option value="Salary">Salary</option>
+            <option value="Freelance">Freelance</option>
+            <option value="Food & Dining">Food &amp; Dining</option>
+            <option value="Transport">Transport</option>
+            <option value="Shopping">Shopping</option>
+            <option value="Entertainment">Entertainment</option>
+            <option value="Health">Health</option>
+            <option value="Utilities">Utilities</option>
+            <option value="Education">Education</option>
+            <option value="Investment">Investment</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </header>
+
+      <div class="state-loading" id="loadingState">
+        <div class="spinner"></div>
+        <p>Fetching transactions…</p>
+      </div>
+
+      <div class="state-empty hidden" id="emptyState">
+        <span class="state-icon">◈</span>
+        <p class="state-title">No transactions yet</p>
+        <p class="state-sub">Add your first entry using the form above.</p>
+      </div>
+
+      <div class="table-scroll hidden" id="tableWrapper">
+        <table class="txn-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Category</th>
+              <th>Note</th>
+              <th class="th-amount">Amount</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="txnBody"></tbody>
+        </table>
+      </div>
+    </section>
+
   </main>
 
   <!-- Toast notification -->
-  <div class="toast" id="toast"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="../js/dashboard.js"></script>
 </body>
