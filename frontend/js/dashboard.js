@@ -129,14 +129,14 @@ function groupBySum(expenses, keyFn) {
 
 /** GET /api/expenses */
 async function fetchExpenses() {
-  const res = await fetch(`${BASE_URL}/expenses`);
+  const res = await fetch(`${BASE_URL}/transactions`);
   if (!res.ok) throw new Error(`Server error: ${res.status}`);
   return res.json();
 }
 
 /** POST /api/add-expense */
 async function createExpense(data) {
-  const res = await fetch(`${BASE_URL}/add-expense`, {
+  const res = await fetch(`${BASE_URL}/add-transaction`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -150,7 +150,7 @@ async function createExpense(data) {
 
 /** DELETE /api/expense/:id */
 async function deleteExpense(id) {
-  const res = await fetch(`${BASE_URL}/expense/${id}`, { method: 'DELETE' });
+  const res = await fetch(`${BASE_URL}/transaction/${id}`, { method: 'DELETE' });
   if (!res.ok) throw new Error(`Server error: ${res.status}`);
 }
 
@@ -165,24 +165,34 @@ async function deleteExpense(id) {
  * - Top category (by total spend)
  */
 function renderSummaryCards(expenses) {
-  // Total
-  const total = expenses.reduce((s, e) => s + (e.amount || 0), 0);
-  document.getElementById('totalAmount').textContent  = formatCurrency(total);
-  document.getElementById('txnCount').textContent     = `${expenses.length} transaction${expenses.length !== 1 ? 's' : ''}`;
-  document.getElementById('txnCountBig').textContent  = expenses.length;
 
-  // Top Category
-  if (expenses.length === 0) {
-    document.getElementById('topCategory').textContent    = '—';
-    document.getElementById('topCategoryAmt').textContent = '$0.00 spent';
-    return;
-  }
+  const income = expenses
+    .filter(e => e.type === "income")
+    .reduce((sum,e)=>sum + e.amount,0);
 
-  const { labels, totals } = groupBySum(expenses, e => e.category || 'Other');
-  const maxIdx = totals.indexOf(Math.max(...totals));
+  const spent = expenses
+    .filter(e => e.type === "expense")
+    .reduce((sum,e)=>sum + e.amount,0);
 
-  document.getElementById('topCategory').textContent    = labels[maxIdx];
-  document.getElementById('topCategoryAmt').textContent = `${formatCurrency(totals[maxIdx])} spent`;
+  const savings = expenses
+    .filter(e => e.type === "saving")
+    .reduce((sum,e)=>sum + e.amount,0);
+
+  const balance = income - spent - savings;
+
+  document.getElementById('totalAmount').textContent = formatCurrency(spent);
+
+  document.getElementById('txnCount').textContent =
+    `${expenses.length} transactions`;
+
+  document.getElementById('txnCountBig').textContent =
+    expenses.length;
+
+  document.getElementById('topCategory').textContent =
+    "Balance";
+
+  document.getElementById('topCategoryAmt').textContent =
+    formatCurrency(balance);
 }
 
 /* ─────────────────────────────────────────────────
@@ -195,6 +205,7 @@ function renderSummaryCards(expenses) {
  * @param {Array} expenses — unfiltered full list
  */
 function renderPieChart(expenses) {
+
   const canvas  = document.getElementById('pieChart');
   const emptyEl = document.getElementById('pieEmpty');
 
@@ -203,7 +214,10 @@ function renderPieChart(expenses) {
     pieChartInstance = null;
   }
 
-  if (expenses.length === 0) {
+  // Only include expenses in chart
+  const expenseOnly = expenses.filter(e => e.type === "expense");
+
+  if (expenseOnly.length === 0) {
     setVisible(canvas, false);
     setVisible(emptyEl, true);
     return;
@@ -213,47 +227,50 @@ function renderPieChart(expenses) {
   setVisible(emptyEl, false);
 
   // Aggregate by category
-  const { labels, totals } = groupBySum(expenses, e => e.category || 'Other');
+  const { labels, totals } = groupBySum(
+    expenseOnly,
+    e => e.category || "Other"
+  );
 
   pieChartInstance = new Chart(canvas, {
-    type: 'doughnut',
+    type: "doughnut",
     data: {
       labels,
       datasets: [{
         data: totals,
         backgroundColor: CHART_PALETTE.slice(0, labels.length),
-        borderColor: 'transparent',
-        hoverOffset: 8,
-      }],
+        borderColor: "transparent",
+        hoverOffset: 8
+      }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: true,
-      cutout: '62%',
+      cutout: "62%",
       plugins: {
         legend: {
-          position: 'bottom',
+          position: "bottom",
           labels: {
-            color: '#9295a8',
+            color: "#9295a8",
             font: { family: "'DM Sans', sans-serif", size: 12 },
             padding: 16,
             usePointStyle: true,
-            pointStyleWidth: 8,
-          },
+            pointStyleWidth: 8
+          }
         },
         tooltip: {
-          backgroundColor: '#1c1f2b',
-          titleColor: '#e8e9f0',
-          bodyColor: '#9295a8',
-          borderColor: 'rgba(255,255,255,0.07)',
+          backgroundColor: "#1c1f2b",
+          titleColor: "#e8e9f0",
+          bodyColor: "#9295a8",
+          borderColor: "rgba(255,255,255,0.07)",
           borderWidth: 1,
           padding: 12,
           callbacks: {
-            label: ctx => ` ${formatCurrency(ctx.parsed)}`,
-          },
-        },
-      },
-    },
+            label: ctx => ` ${formatCurrency(ctx.parsed)}`
+          }
+        }
+      }
+    }
   });
 }
 
@@ -267,6 +284,7 @@ function renderPieChart(expenses) {
  * @param {Array} expenses — unfiltered full list
  */
 function renderBarChart(expenses) {
+
   const canvas  = document.getElementById('barChart');
   const emptyEl = document.getElementById('barEmpty');
 
@@ -275,7 +293,10 @@ function renderBarChart(expenses) {
     barChartInstance = null;
   }
 
-  if (expenses.length === 0) {
+  // Only include expense transactions
+  const expenseOnly = expenses.filter(e => e.type === "expense");
+
+  if (expenseOnly.length === 0) {
     setVisible(canvas, false);
     setVisible(emptyEl, true);
     return;
@@ -284,28 +305,33 @@ function renderBarChart(expenses) {
   setVisible(canvas, true);
   setVisible(emptyEl, false);
 
-  // Group by "Mon YYYY", sorting entries chronologically
+  // Group expenses by day
   const map = new Map();
-  expenses.forEach(e => {
-    const d = new Date(e.createdAt || Date.now());
-    // Use sortable key (YYYY-MM) for ordering, display label separately
-    const sortKey    = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const displayKey = formatMonthLabel(e.createdAt || new Date().toISOString());
-    if (!map.has(sortKey)) map.set(sortKey, { label: displayKey, total: 0 });
-    map.get(sortKey).total += (e.amount || 0);
+
+  expenseOnly.forEach(e => {
+
+    const date = new Date(e.createdAt || Date.now());
+
+    const label = date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric"
+    });
+
+    map.set(label, (map.get(label) || 0) + (e.amount || 0));
+
   });
 
-  // Sort by sortKey (chronological)
-  const sorted = [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  const labels = sorted.map(([, v]) => v.label);
-  const totals = sorted.map(([, v]) => v.total);
+  const labels = [...map.keys()];
+  const totals = labels.map(l => map.get(l));
 
   barChartInstance = new Chart(canvas, {
+
     type: 'bar',
+
     data: {
       labels,
       datasets: [{
-        label: 'Spending',
+        label: 'Daily Spending',
         data: totals,
         backgroundColor: 'rgba(201,168,76,0.25)',
         borderColor: '#c9a84c',
@@ -315,9 +341,11 @@ function renderBarChart(expenses) {
         hoverBackgroundColor: 'rgba(201,168,76,0.45)',
       }],
     },
+
     options: {
       responsive: true,
       maintainAspectRatio: false,
+
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -332,6 +360,7 @@ function renderBarChart(expenses) {
           },
         },
       },
+
       scales: {
         x: {
           grid: { color: 'rgba(255,255,255,0.04)' },
@@ -353,6 +382,7 @@ function renderBarChart(expenses) {
         },
       },
     },
+
   });
 }
 
@@ -465,7 +495,12 @@ async function handleAddExpense() {
   btnText.textContent = 'Saving…';
 
   try {
-    await createExpense({ amount, category, note });
+    await createExpense({
+      amount,
+      type: "expense",
+      category,
+      note
+    });
     showToast('Expense added ✦', 'success');
     showFormMessage('Expense saved!', 'success');
 
@@ -506,6 +541,16 @@ async function handleDelete(e) {
   }
 }
 
+
+async function loadFinanceSummary(){
+
+ const res = await fetch(`${BASE_URL}/finance-summary`);
+ const data = await res.json();
+
+ console.log("Finance summary:",data);
+
+}
+
 /* ─────────────────────────────────────────────────
    9. DATA LOADING & BOOTSTRAP
 ───────────────────────────────────────────────── */
@@ -514,6 +559,7 @@ async function handleDelete(e) {
 async function loadExpenses() {
   try {
     allExpenses = await fetchExpenses();
+    await loadFinanceSummary();
     setStatus(true);
     renderAll();
   } catch (err) {
@@ -524,6 +570,7 @@ async function loadExpenses() {
     showToast('Could not reach backend.', 'error');
   }
 }
+
 
 /** Wire up all event listeners and kick off initial data load. */
 function init() {
