@@ -4,7 +4,9 @@ const cors = require("cors");
 const path = require("path");
 
 const expenseRoutes = require("./routes/expenseRoutes");
+const authRoutes = require("./routes/authRoutes");
 
+app.use("/api",authRoutes);
 const app = express();
 
 app.use(cors());
