@@ -29,7 +29,7 @@ app.get("/", (req,res)=>{
     res.sendFile(path.join(__dirname,"../frontend/pages/login.html"));
 });
 app.get("/register", (req,res)=>{
-res.sendFile(path.join(__dirname,"../frontend/pages/register.html"));
+  res.sendFile(path.join(__dirname,"../frontend/pages/register.html"));
 });
 
 // start server
