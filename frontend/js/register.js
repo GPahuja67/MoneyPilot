@@ -13,7 +13,7 @@
 
 'use strict';
 
-const REGISTER_ENDPOINT = 'http://localhost:5000/api/auth/register';
+const REGISTER_ENDPOINT = 'http://localhost:5000/api/register';
 
 /* ── DOM refs ─────────────────────────────────────────────── */
 const form         = document.getElementById('registerForm');
@@ -23,10 +23,10 @@ const pwdInput     = document.getElementById('regPassword');
 const confirmInput = document.getElementById('regConfirm');
 const termsCheck   = document.getElementById('agreeTerms');
 
-const nameErr    = document.getElementById('nameError');
-const emailErr   = document.getElementById('regEmailError');
-const pwdErr     = document.getElementById('regPasswordError');
-const confirmErr = document.getElementById('confirmError');
+const nameErr    = document.getElementById('regNameErr');
+const emailErr   = document.getElementById('regEmailErr');
+const pwdErr     = document.getElementById('regPwdErr');
+const confirmErr = document.getElementById('regConfirmErr');
 const termsErr   = document.getElementById('termsError');
 
 const errBanner  = document.getElementById('registerError');
@@ -38,7 +38,7 @@ const btnText     = registerBtn?.querySelector('.btn-auth__text');
 const btnSpinner  = registerBtn?.querySelector('.btn-auth__spinner');
 const btnArrow    = registerBtn?.querySelector('.btn-auth__arrow');
 
-const toggleBtn  = document.getElementById('toggleRegPwd');
+const toggleBtn  = document.getElementById('regEyeBtn');
 
 const strengthMeter = document.getElementById('strengthMeter');
 const strengthBar   = document.getElementById('strengthBar');
