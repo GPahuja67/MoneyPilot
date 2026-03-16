@@ -151,6 +151,27 @@ function setConnected(ok) {
   pill.querySelector('.status-label').textContent = ok ? 'Connected' : 'Offline';
 }
 
+// check login
+const token = localStorage.getItem("mp_token");
+
+if (!token) {
+  window.location.href = "/login";
+}
+
+// profile dropdown
+const profileTrigger = document.getElementById("profileTrigger");
+const profileDropdown = document.getElementById("profileDropdown");
+
+profileTrigger.addEventListener("click", () => {
+  profileDropdown.classList.toggle("hidden");
+});
+
+// logout
+document.getElementById("logoutBtn").addEventListener("click", () => {
+  localStorage.removeItem("mp_token");
+  window.location.href = "/login";
+});
+
 /* ───────────────────────────────────────────────────────────────
    §3  API LAYER
    ─────────────────────────────────────────────────────────────
