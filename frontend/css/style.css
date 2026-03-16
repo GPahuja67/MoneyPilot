@@ -159,6 +159,68 @@ body {
   display: flex; align-items: flex-start; justify-content: space-between;
 }
 
+.profile-menu{
+  position:relative;
+  margin-left:16px;
+}
+
+.profile-trigger{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  cursor:pointer;
+}
+
+.profile-avatar{
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  background:#c9a84c;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:600;
+}
+
+/* Profile dropdown */
+.profile-dropdown{
+  position:absolute;
+  top:44px;
+  right:0;
+  min-width:140px;
+  background:#12152a;
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:10px;
+  padding:6px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.45);
+  z-index:50;
+}
+
+/* Logout button */
+.profile-dropdown button{
+  width:100%;
+  background:transparent;
+  border:none;
+  color:#e5e7ef;
+  font-family:inherit;
+  font-size:0.85rem;
+  padding:10px 12px;
+  border-radius:8px;
+  cursor:pointer;
+  text-align:left;
+  transition:background 0.15s ease,color 0.15s ease;
+}
+
+/* Hover */
+.profile-dropdown button:hover{
+  background:rgba(201,168,76,0.12);
+  color:#c9a84c;
+}
+
+.hidden{
+  display:none;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    ROW 1 — KPI SUMMARY CARDS WITH SPARKLINES
    ─────────────────────────────────────────────────────────────
