@@ -1,214 +1,216 @@
 /**
  * MoneyPilot — register.js
- * ──────────────────────────
- * Handles:
- *   • Client-side validation (name, email, password, confirm, terms)
- *   • Password strength meter
- *   • POST /api/auth/register
- *   • Loading / success / error states
- *   • Password visibility toggle
- *
- * Place this file at: frontend/js/register.js
+ * Handles registration form submission, validation, password strength, and redirect.
  */
 
-'use strict';
+const API_BASE = "http://localhost:5000/api";
 
-const REGISTER_ENDPOINT = 'http://localhost:5000/api/register';
+// ── DOM refs ──────────────────────────────────────────────────────────────────
+const form           = document.getElementById("registerForm");
+const nameEl         = document.getElementById("name");
+const emailEl        = document.getElementById("email");
+const passwordEl     = document.getElementById("password");
+const confirmEl      = document.getElementById("confirmPassword");
+const termsEl        = document.getElementById("terms");
+const btn            = document.getElementById("registerBtn");
+const alertBox       = document.getElementById("alert");
+const pwToggle1      = document.getElementById("pwToggle1");
+const pwToggle2      = document.getElementById("pwToggle2");
+const bars           = [
+  document.getElementById("bar1"),
+  document.getElementById("bar2"),
+  document.getElementById("bar3"),
+  document.getElementById("bar4"),
+];
 
-/* ── DOM refs ─────────────────────────────────────────────── */
-const form         = document.getElementById('registerForm');
-const nameInput    = document.getElementById('regName');
-const emailInput   = document.getElementById('regEmail');
-const pwdInput     = document.getElementById('regPassword');
-const confirmInput = document.getElementById('regConfirm');
-const termsCheck   = document.getElementById('agreeTerms');
-
-const nameErr    = document.getElementById('regNameErr');
-const emailErr   = document.getElementById('regEmailErr');
-const pwdErr     = document.getElementById('regPwdErr');
-const confirmErr = document.getElementById('regConfirmErr');
-const termsErr   = document.getElementById('termsError');
-
-const errBanner  = document.getElementById('registerError');
-const errMsg     = document.getElementById('registerErrorMsg');
-const successBanner = document.getElementById('registerSuccess');
-
-const registerBtn = document.getElementById('registerBtn');
-const btnText     = registerBtn?.querySelector('.btn-auth__text');
-const btnSpinner  = registerBtn?.querySelector('.btn-auth__spinner');
-const btnArrow    = registerBtn?.querySelector('.btn-auth__arrow');
-
-const toggleBtn  = document.getElementById('regEyeBtn');
-
-const strengthMeter = document.getElementById('strengthMeter');
-const strengthBar   = document.getElementById('strengthBar');
-const strengthLabel = document.getElementById('strengthLabel');
-
-/* ── Utilities ────────────────────────────────────────────── */
-const show = el => el?.classList.remove('hidden');
-const hide = el => el?.classList.add('hidden');
-
-function setError(input, errorEl, message) {
-  input?.classList.add('field-input--error');
-  if (errorEl) errorEl.textContent = message;
-  show(errorEl);
-}
-function clearError(input, errorEl) {
-  input?.classList.remove('field-input--error');
-  hide(errorEl);
+// ── Password visibility toggles ───────────────────────────────────────────────
+function makeToggle(btn, input) {
+  btn.addEventListener("click", () => {
+    const isText = input.type === "text";
+    input.type = isText ? "password" : "text";
+    btn.querySelector("svg").style.opacity = isText ? "1" : "0.5";
+  });
 }
 
-function setLoading(loading) {
-  if (!registerBtn) return;
-  registerBtn.disabled = loading;
-  if (loading) { hide(btnText); hide(btnArrow); show(btnSpinner); }
-  else         { show(btnText); show(btnArrow); hide(btnSpinner); }
-}
+makeToggle(pwToggle1, passwordEl);
+makeToggle(pwToggle2, confirmEl);
 
-const isValidEmail = v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
-
-/* ── Password strength ────────────────────────────────────── */
-/**
- * Scores a password from 0-4 and updates the strength meter UI.
- * Returns the score for use in validation.
- */
-function evaluateStrength(pwd) {
-  if (!pwd) {
-    strengthMeter.className = 'strength-meter';
-    strengthLabel.textContent = '';
-    return 0;
-  }
-
+// ── Password strength meter ───────────────────────────────────────────────────
+function getStrength(pw) {
   let score = 0;
-  if (pwd.length >= 8)                score++;
-  if (pwd.length >= 12)               score++;
-  if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score++;
-  if (/[0-9]/.test(pwd))              score++;
-  if (/[^A-Za-z0-9]/.test(pwd))      score++;
-
-  // Map score → level
-  const levels = [
-    null,
-    { cls: 'strength--weak',   label: 'Weak' },
-    { cls: 'strength--fair',   label: 'Fair' },
-    { cls: 'strength--good',   label: 'Good' },
-    { cls: 'strength--strong', label: 'Strong' },
-    { cls: 'strength--strong', label: 'Strong' },
-  ];
-  const level = levels[Math.min(score, 4)];
-  strengthMeter.className = `strength-meter ${level.cls}`;
-  strengthLabel.textContent = level.label;
-
-  return score;
+  if (pw.length >= 8)                    score++;
+  if (pw.length >= 12)                   score++;
+  if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw))                  score++;
+  if (/[^A-Za-z0-9]/.test(pw))          score++;
+  // Normalise to 0–4
+  return Math.min(4, Math.max(0, Math.round(score * 0.8)));
 }
 
-pwdInput?.addEventListener('input', () => evaluateStrength(pwdInput.value));
+const strengthClasses = ["", "weak", "fair", "good", "strong"];
 
-/* ── Password toggle ──────────────────────────────────────── */
-toggleBtn?.addEventListener('click', () => {
-  const isHidden = pwdInput.type === 'password';
-  pwdInput.type  = isHidden ? 'text' : 'password';
-  toggleBtn.querySelector('.eye-icon--show')?.classList.toggle('hidden', isHidden);
-  toggleBtn.querySelector('.eye-icon--hide')?.classList.toggle('hidden', !isHidden);
-  toggleBtn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+passwordEl.addEventListener("input", () => {
+  const strength = getStrength(passwordEl.value);
+  bars.forEach((bar, i) => {
+    bar.className = "pw-bar";
+    if (i < strength) bar.classList.add(strengthClasses[strength]);
+  });
 });
 
-/* ── Clear errors on input ────────────────────────────────── */
-nameInput?.addEventListener('input',    () => clearError(nameInput, nameErr));
-emailInput?.addEventListener('input',   () => clearError(emailInput, emailErr));
-pwdInput?.addEventListener('input',     () => clearError(pwdInput, pwdErr));
-confirmInput?.addEventListener('input', () => clearError(confirmInput, confirmErr));
-termsCheck?.addEventListener('change',  () => hide(termsErr));
-
-/* ── Full validation ──────────────────────────────────────── */
-function validate() {
-  let valid = true;
-
-  // Name
-  if (!nameInput.value.trim() || nameInput.value.trim().length < 2) {
-    setError(nameInput, nameErr, 'Please enter your full name.');
-    valid = false;
-  } else { clearError(nameInput, nameErr); }
-
-  // Email
-  if (!isValidEmail(emailInput.value)) {
-    setError(emailInput, emailErr, 'Please enter a valid email address.');
-    valid = false;
-  } else { clearError(emailInput, emailErr); }
-
-  // Password
-  if (pwdInput.value.length < 8) {
-    setError(pwdInput, pwdErr, 'Password must be at least 8 characters.');
-    valid = false;
-  } else { clearError(pwdInput, pwdErr); }
-
-  // Confirm
-  if (confirmInput.value !== pwdInput.value) {
-    setError(confirmInput, confirmErr, 'Passwords do not match.');
-    valid = false;
-  } else { clearError(confirmInput, confirmErr); }
-
-  // Terms
-  if (!termsCheck.checked) {
-    show(termsErr);
-    valid = false;
-  } else { hide(termsErr); }
-
-  return valid;
+// ── Alert helpers ─────────────────────────────────────────────────────────────
+function showAlert(message, type = "error") {
+  alertBox.textContent = message;
+  alertBox.className   = `alert ${type}`;
 }
 
-/* ── Form submit ──────────────────────────────────────────── */
-form?.addEventListener('submit', async e => {
-  e.preventDefault();
-  hide(errBanner);
-  hide(successBanner);
+function hideAlert() {
+  alertBox.className   = "alert";
+  alertBox.textContent = "";
+}
 
-  if (!validate()) return;
+// ── Input error highlighting ──────────────────────────────────────────────────
+function markInvalid(el) {
+  el.classList.add("invalid");
+  el.addEventListener("input", () => el.classList.remove("invalid"), { once: true });
+}
+
+// ── Validation ────────────────────────────────────────────────────────────────
+function validate(name, email, password, confirm) {
+  // Name
+  if (!name.trim()) {
+    showAlert("Please enter your full name.");
+    markInvalid(nameEl);
+    nameEl.focus();
+    return false;
+  }
+
+  if (name.trim().length < 2) {
+    showAlert("Name must be at least 2 characters.");
+    markInvalid(nameEl);
+    nameEl.focus();
+    return false;
+  }
+
+  // Email
+  if (!email.trim()) {
+    showAlert("Please enter your email address.");
+    markInvalid(emailEl);
+    emailEl.focus();
+    return false;
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    showAlert("Please enter a valid email address.");
+    markInvalid(emailEl);
+    emailEl.focus();
+    return false;
+  }
+
+  // Password
+  if (!password) {
+    showAlert("Please create a password.");
+    markInvalid(passwordEl);
+    passwordEl.focus();
+    return false;
+  }
+
+  if (password.length < 8) {
+    showAlert("Password must be at least 8 characters.");
+    markInvalid(passwordEl);
+    passwordEl.focus();
+    return false;
+  }
+
+  // Confirm
+  if (!confirm) {
+    showAlert("Please confirm your password.");
+    markInvalid(confirmEl);
+    confirmEl.focus();
+    return false;
+  }
+
+  if (password !== confirm) {
+    showAlert("Passwords do not match.");
+    markInvalid(confirmEl);
+    confirmEl.focus();
+    return false;
+  }
+
+  // Terms
+  if (!termsEl.checked) {
+    showAlert("Please accept the Terms of Service to continue.");
+    return false;
+  }
+
+  return true;
+}
+
+// ── Loading state ─────────────────────────────────────────────────────────────
+function setLoading(loading) {
+  if (loading) {
+    btn.classList.add("loading");
+    btn.textContent = "Creating account…";
+  } else {
+    btn.classList.remove("loading");
+    btn.innerHTML = '<span class="btn-shine"></span>Create Account';
+  }
+}
+
+// ── Form submit ───────────────────────────────────────────────────────────────
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  hideAlert();
+
+  const name     = nameEl.value.trim();
+  const email    = emailEl.value.trim();
+  const password = passwordEl.value;
+  const confirm  = confirmEl.value;
+
+  if (!validate(name, email, password, confirm)) return;
 
   setLoading(true);
 
   try {
-    const res = await fetch(REGISTER_ENDPOINT, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name:     nameInput.value.trim(),
-        email:    emailInput.value.trim(),
-        password: pwdInput.value,
-      }),
+    const response = await fetch(`${API_BASE}/register`, {
+      method : "POST",
+      headers: { "Content-Type": "application/json" },
+      body   : JSON.stringify({ name, email, password }),
     });
 
-    const data = await res.json().catch(() => ({}));
+    const data = await response.json();
 
-    if (!res.ok) {
-      errMsg.textContent = data.message || 'Registration failed. Please try again.';
-      show(errBanner);
-      errBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (!response.ok) {
+      const message =
+        data.message || data.error || "Registration failed. Please try again.";
+      showAlert(message);
       return;
     }
 
-    /* Success */
-    show(successBanner);
+    // ── Success ──────────────────────────────────────────────────────────────
+    showAlert("Account created successfully! Redirecting to login…", "success");
+
+    // Clear form
     form.reset();
-    evaluateStrength('');
+    bars.forEach(b => (b.className = "pw-bar"));
 
-    /* Persist token if returned immediately */
-    const token = data.token || data.accessToken;
-    if (token) {
-      sessionStorage.setItem('mp_token', token);
-      if (data.user) sessionStorage.setItem('mp_user', JSON.stringify(data.user));
-    }
-
-    /* Redirect after a short delay so user sees the success banner */
+    // Redirect to login
     setTimeout(() => {
-      window.location.href = data.redirectTo || 'dashboard.html';
+      window.location.href = "/login";
     }, 1800);
 
   } catch (err) {
-    console.error('Register error:', err);
-    errMsg.textContent = 'Cannot reach the server. Please check your connection.';
-    show(errBanner);
+    console.error("Registration error:", err);
+    showAlert("Unable to reach the server. Please check your connection.");
   } finally {
     setLoading(false);
   }
 });
+
+// ── Redirect if already logged in ────────────────────────────────────────────
+(function checkAuth() {
+  const token = localStorage.getItem("mp_token");
+  if (token) {
+    window.location.href = "/dashboard";
+  }
+})();
