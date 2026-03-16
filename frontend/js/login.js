@@ -1,144 +1,154 @@
 /**
  * MoneyPilot — login.js
- * ─────────────────────
- * Handles:
- *   • Client-side validation
- *   • POST /api/auth/login
- *   • Loading / error states
- *   • Password visibility toggle
- *
- * Place this file at: frontend/js/login.js
+ * Handles login form submission, validation, JWT storage, and redirect.
  */
 
-'use strict';
+const API_BASE = "http://localhost:5000/api";
 
-const LOGIN_ENDPOINT = 'http://localhost:5000/api/auth/login';
+// ── DOM refs ────────────────────────────────────────────────────────────────
+const form      = document.getElementById("loginForm");
+const emailEl   = document.getElementById("email");
+const passwordEl= document.getElementById("password");
+const btn       = document.getElementById("loginBtn");
+const alertBox  = document.getElementById("alert");
+const pwToggle  = document.getElementById("pwToggle");
 
-/* ── DOM refs ─────────────────────────────────────────────── */
-const form        = document.getElementById('loginForm');
-const emailInput  = document.getElementById('loginEmail');
-const pwdInput    = document.getElementById('loginPassword');
-const emailErr    = document.getElementById('emailError');
-const pwdErr      = document.getElementById('passwordError');
-const loginErrBanner = document.getElementById('loginError');
-const loginErrMsg    = document.getElementById('loginErrorMsg');
-const loginBtn    = document.getElementById('loginBtn');
-const btnText     = loginBtn?.querySelector('.btn-auth__text');
-const btnSpinner  = loginBtn?.querySelector('.btn-auth__spinner');
-const btnArrow    = loginBtn?.querySelector('.btn-auth__arrow');
-const toggleBtn   = document.getElementById('toggleLoginPwd');
-
-/* ── Utilities ────────────────────────────────────────────── */
-const show  = el => el?.classList.remove('hidden');
-const hide  = el => el?.classList.add('hidden');
-
-function setError(input, errorEl, message) {
-  input.classList.add('field-input--error');
-  errorEl.textContent = message;
-  show(errorEl);
-}
-function clearError(input, errorEl) {
-  input.classList.remove('field-input--error');
-  hide(errorEl);
-}
-
-function setLoading(loading) {
-  loginBtn.disabled = loading;
-  if (loading) {
-    hide(btnText);
-    hide(btnArrow);
-    show(btnSpinner);
-  } else {
-    show(btnText);
-    show(btnArrow);
-    hide(btnSpinner);
-  }
-}
-
-/* ── Validation ───────────────────────────────────────────── */
-function validateEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-}
-
-function validate() {
-  let valid = true;
-
-  if (!emailInput.value.trim() || !validateEmail(emailInput.value)) {
-    setError(emailInput, emailErr, 'Please enter a valid email address.');
-    valid = false;
-  } else {
-    clearError(emailInput, emailErr);
-  }
-
-  if (!pwdInput.value) {
-    setError(pwdInput, pwdErr, 'Password is required.');
-    valid = false;
-  } else {
-    clearError(pwdInput, pwdErr);
-  }
-
-  return valid;
-}
-
-/* ── Clear field errors on input ──────────────────────────── */
-emailInput?.addEventListener('input', () => clearError(emailInput, emailErr));
-pwdInput?.addEventListener('input',   () => clearError(pwdInput, pwdErr));
-
-/* ── Password toggle ──────────────────────────────────────── */
-toggleBtn?.addEventListener('click', () => {
-  const isHidden = pwdInput.type === 'password';
-  pwdInput.type  = isHidden ? 'text' : 'password';
-  toggleBtn.querySelector('.eye-icon--show')?.classList.toggle('hidden', isHidden);
-  toggleBtn.querySelector('.eye-icon--hide')?.classList.toggle('hidden', !isHidden);
-  toggleBtn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+// ── Password visibility toggle ───────────────────────────────────────────────
+pwToggle.addEventListener("click", () => {
+  const isText = passwordEl.type === "text";
+  passwordEl.type = isText ? "password" : "text";
+  pwToggle.querySelector("svg").style.opacity = isText ? "1" : "0.5";
 });
 
-/* ── Form submit ──────────────────────────────────────────── */
-form?.addEventListener('submit', async e => {
-  e.preventDefault();
-  hide(loginErrBanner);
+// ── Alert helpers ─────────────────────────────────────────────────────────────
+function showAlert(message, type = "error") {
+  alertBox.textContent = message;
+  alertBox.className   = `alert ${type}`;
+}
 
-  if (!validate()) return;
+function hideAlert() {
+  alertBox.className = "alert";
+  alertBox.textContent = "";
+}
+
+// ── Validation ────────────────────────────────────────────────────────────────
+function validate(email, password) {
+  if (!email.trim()) {
+    showAlert("Please enter your email address.");
+    emailEl.focus();
+    return false;
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    showAlert("Please enter a valid email address.");
+    emailEl.focus();
+    return false;
+  }
+
+  if (!password) {
+    showAlert("Please enter your password.");
+    passwordEl.focus();
+    return false;
+  }
+
+  if (password.length < 6) {
+    showAlert("Password must be at least 6 characters.");
+    passwordEl.focus();
+    return false;
+  }
+
+  return true;
+}
+
+// ── Loading state ─────────────────────────────────────────────────────────────
+function setLoading(loading) {
+  if (loading) {
+    btn.classList.add("loading");
+    btn.textContent = "Signing in…";
+  } else {
+    btn.classList.remove("loading");
+    btn.innerHTML = '<span class="btn-shine"></span>Sign In';
+  }
+}
+
+// ── Form submit ───────────────────────────────────────────────────────────────
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  hideAlert();
+
+  const email    = emailEl.value.trim();
+  const password = passwordEl.value;
+
+  if (!validate(email, password)) return;
 
   setLoading(true);
 
   try {
-    const res = await fetch(LOGIN_ENDPOINT, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email:    emailInput.value.trim(),
-        password: pwdInput.value,
-      }),
+    const response = await fetch(`${API_BASE}/login`, {
+      method : "POST",
+      headers: { "Content-Type": "application/json" },
+      body   : JSON.stringify({ email, password }),
     });
 
-    const data = await res.json().catch(() => ({}));
+    const data = await response.json();
 
-    if (!res.ok) {
-      loginErrMsg.textContent = data.message || 'Invalid email or password.';
-      show(loginErrBanner);
-      loginErrBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (!response.ok) {
+      // Server returned an error (4xx / 5xx)
+      const message =
+        data.message || data.error || "Invalid credentials. Please try again.";
+      showAlert(message);
       return;
     }
 
-    /* Success — persist token and redirect */
-    const token = data.token || data.accessToken;
-    if (token) {
-      const storage = document.getElementById('rememberMe')?.checked
-        ? localStorage
-        : sessionStorage;
-      storage.setItem('mp_token', token);
-      if (data.user) storage.setItem('mp_user', JSON.stringify(data.user));
+    // ── Success ──────────────────────────────────────────────────────────────
+    const token = data.token;
+
+    if (!token) {
+      showAlert("Login succeeded but no token was returned. Please contact support.");
+      return;
     }
 
-    /* Redirect to dashboard */
-    window.location.href = 'dashboard.html';
+    // Store token
+    localStorage.setItem("mp_token", token);
+
+    // Optionally persist email for "remember me"
+    const remember = document.getElementById("remember").checked;
+    if (remember) {
+      localStorage.setItem("mp_remembered_email", email);
+    } else {
+      localStorage.removeItem("mp_remembered_email");
+    }
+
+    showAlert("Login successful! Redirecting…", "success");
+
+    // Redirect to dashboard
+    setTimeout(() => {
+      window.location.href = "/dashboard";
+    }, 600);
 
   } catch (err) {
-    console.error('Login error:', err);
-    loginErrMsg.textContent = 'Cannot reach the server. Please try again.';
-    show(loginErrBanner);
+    // Network error / server unreachable
+    console.error("Login error:", err);
+    showAlert("Unable to reach the server. Please check your connection.");
   } finally {
     setLoading(false);
   }
 });
+
+// ── Pre-fill remembered email on page load ───────────────────────────────────
+window.addEventListener("DOMContentLoaded", () => {
+  const saved = localStorage.getItem("mp_remembered_email");
+  if (saved) {
+    emailEl.value = saved;
+    document.getElementById("remember").checked = true;
+  }
+});
+
+// ── Redirect if already logged in ────────────────────────────────────────────
+(function checkAuth() {
+  const token = localStorage.getItem("mp_token");
+  if (token) {
+    window.location.href = "/dashboard";
+  }
+})();
