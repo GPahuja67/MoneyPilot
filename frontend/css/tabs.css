@@ -1,0 +1,363 @@
+/* ════════════════════════════════════════════════════════════════
+   MoneyPilot — tabs.css
+   Tab switching, Analytics, Accounts, Insight components
+   Designed to augment style.css without overriding it.
+════════════════════════════════════════════════════════════════ */
+
+/* ── Tab nav buttons (header-center) ───────────────────────── */
+.tab-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.tab-btn {
+  position: relative;
+  padding: 6px 16px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--f-body);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.18s, background 0.18s;
+  white-space: nowrap;
+}
+
+.tab-btn:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.tab-btn--active {
+  color: var(--text);
+  background: var(--surface-2);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+}
+
+/* Active gold underline accent */
+.tab-btn--active::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 18px;
+  height: 2px;
+  border-radius: 99px;
+  background: var(--gold);
+}
+
+/* ── Tab panels ─────────────────────────────────────────────── */
+.tab-panel {
+  display: none;
+  flex-direction: column;
+  gap: var(--gap);
+  animation: tabFadeIn 0.28s ease both;
+}
+
+.tab-panel--active {
+  display: flex;
+}
+
+@keyframes tabFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── KPI cards: no sparklines on overview tab ───────────────── */
+/* The overview KPI cards are slightly taller without sparklines */
+.kpi-card .kpi-amount {
+  margin-bottom: 6px;
+}
+
+/* ── Insight Banner (top of Dashboard tab) ──────────────────── */
+.insight-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--gold);
+  border-radius: var(--r);
+  animation: rise 0.4s ease both;
+}
+
+.insight-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.insight-text {
+  font-size: 0.86rem;
+  color: var(--text-sub);
+  line-height: 1.5;
+}
+
+.insight-text strong {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+/* ── Analytics: insight cards row ──────────────────────────── */
+.analytics-insights {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--gap);
+}
+
+.insight-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  animation: rise 0.4s ease both;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.insight-card:hover {
+  border-color: rgba(255,255,255,0.12);
+  transform: translateY(-2px);
+}
+
+.insight-card:nth-child(1) { animation-delay:   0ms; }
+.insight-card:nth-child(2) { animation-delay:  55ms; }
+.insight-card:nth-child(3) { animation-delay: 110ms; }
+
+.insight-card--gold  { border-left: 3px solid var(--gold); }
+.insight-card--teal  { border-left: 3px solid var(--income); }
+.insight-card--blue  { border-left: 3px solid var(--saving); }
+
+.insight-card__icon {
+  font-size: 1.6rem;
+  flex-shrink: 0;
+}
+
+.insight-card__label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.insight-card__value {
+  font-family: var(--f-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+/* ── Analytics: trends section (full-width line chart) ──────── */
+.analytics-trends {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.chart-panel--trend {
+  animation-delay: 300ms;
+}
+
+.chart-area--line {
+  height: 220px;
+}
+
+/* ── Accounts Tab ───────────────────────────────────────────── */
+.accounts-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: var(--gap);
+  align-items: start;
+}
+
+.accounts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--gap);
+}
+
+/* Account card */
+.acct-card {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 22px 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.2s, transform 0.2s;
+  animation: rise 0.4s ease both;
+  cursor: default;
+}
+
+.acct-card:hover {
+  border-color: rgba(255,255,255,0.14);
+  transform: translateY(-2px);
+}
+
+.acct-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 12px; bottom: 12px;
+  width: 4px; border-radius: 0 4px 4px 0;
+}
+
+.acct-card--bank::before       { background: var(--saving); }
+.acct-card--cash::before       { background: var(--income); }
+.acct-card--wallet::before     { background: var(--gold); }
+.acct-card--investment::before { background: #a78bfa; }
+
+.acct-card__emoji {
+  font-size: 1.5rem;
+  margin-bottom: 2px;
+}
+
+.acct-card__name {
+  font-family: var(--f-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  padding-left: 10px;
+}
+
+.acct-card__type {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding-left: 10px;
+}
+
+.acct-card__balance {
+  font-family: var(--f-mono);
+  font-size: 1.55rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  padding-left: 10px;
+  margin-top: 8px;
+}
+
+.acct-card__actions {
+  display: flex;
+  gap: 8px;
+  padding-left: 10px;
+  margin-top: 6px;
+}
+
+.btn-acct-del {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 0.73rem;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all 0.13s;
+  font-family: var(--f-body);
+}
+
+.btn-acct-del:hover {
+  background: var(--expense-dim);
+  color: var(--expense);
+  border-color: rgba(246,71,95,0.2);
+}
+
+/* Add account button (smaller primary) */
+.btn-primary--sm {
+  width: auto;
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Cancel button */
+.btn-cancel {
+  padding: 11px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--f-body);
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.btn-cancel:hover {
+  border-color: var(--expense);
+  color: var(--expense);
+}
+
+/* Account panel form */
+.panel--account-form {
+  animation: rise 0.35s ease both;
+}
+
+/* Note panel at bottom of accounts */
+.accounts-note {
+  animation: rise 0.4s ease both 200ms;
+  padding: 16px 20px;
+}
+
+/* Empty accounts state */
+.accounts-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 60px 0;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.accounts-empty__icon {
+  font-size: 2rem;
+  opacity: 0.4;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .analytics-insights {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 860px) {
+  .analytics-insights {
+    grid-template-columns: 1fr;
+  }
+  .accounts-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .tab-btn {
+    padding: 5px 10px;
+    font-size: 0.76rem;
+  }
+  .tab-nav {
+    padding: 3px;
+  }
+}
