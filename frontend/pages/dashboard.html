@@ -5,29 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>MoneyPilot — Dashboard</title>
 
-  <!--
-    FONTS
-    ─────
-    Cabinet Grotesk  → headlines, card values (strong geometric personality)
-    Instrument Sans  → UI body text (clean, legible)
-    JetBrains Mono   → numbers, amounts (technical precision)
-  -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <!-- Chart.js v4 from CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 
   <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="../css/tabs.css"/>
 </head>
 <body>
 
-  <!-- ╔══════════════════════════════════════════╗
-       ║  HEADER                                  ║
-       ╚══════════════════════════════════════════╝ -->
+  <!-- ══════════════════ HEADER ══════════════════ -->
   <header class="site-header">
     <div class="header-inner">
+
       <div class="logo">
         <svg class="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 2L2 7l10 5 10-5-10-5z" fill="currentColor" opacity="0.9"/>
@@ -37,321 +29,393 @@
         <span class="logo-wordmark">MoneyPilot</span>
       </div>
 
-      <nav class="header-center">
-        <a href="#" class="nav-link nav-link--active">Dashboard</a>
-        <a href="#" class="nav-link">Analytics</a>
-        <a href="#" class="nav-link">Accounts</a>
+      <!-- TAB NAV (replaces old static nav links) -->
+      <nav class="header-center tab-nav" role="tablist" aria-label="Main navigation">
+        <button class="tab-btn tab-btn--active" data-tab="dashboard" role="tab" aria-selected="true" aria-controls="tab-dashboard">
+          Dashboard
+        </button>
+        <button class="tab-btn" data-tab="analytics" role="tab" aria-selected="false" aria-controls="tab-analytics">
+          Analytics
+        </button>
+        <button class="tab-btn" data-tab="accounts" role="tab" aria-selected="false" aria-controls="tab-accounts">
+          Accounts
+        </button>
       </nav>
 
       <div class="header-right">
+        <span class="header-date" id="headerDate"></span>
+        <div class="status-pill" id="statusPill">
+          <span class="status-dot"></span>
+          <span class="status-label">Connected</span>
+        </div>
+        <div class="profile-menu">
+          <div class="profile-trigger" id="profileTrigger">
+            <span class="profile-avatar">U</span>
+            <span class="profile-name">Profile</span>
+          </div>
+          <div class="profile-dropdown hidden" id="profileDropdown">
+            <button id="logoutBtn">Logout</button>
+          </div>
+        </div>
+      </div>
 
-  <span class="header-date" id="headerDate"></span>
-
-  <div class="status-pill" id="statusPill">
-    <span class="status-dot"></span>
-    <span class="status-label">Connected</span>
-  </div>
-
-  <!-- Profile -->
-  <div class="profile-menu">
-
-    <div class="profile-trigger" id="profileTrigger">
-      <span class="profile-avatar">U</span>
-      <span class="profile-name">Profile</span>
-    </div>
-
-    <div class="profile-dropdown hidden" id="profileDropdown">
-      <button id="logoutBtn">Logout</button>
-    </div>
-
-  </div>
-
-</div>
     </div>
   </header>
 
-  <!-- ╔══════════════════════════════════════════╗
-       ║  MAIN DASHBOARD                          ║
-       ╚══════════════════════════════════════════╝ -->
+  <!-- ══════════════════ MAIN ══════════════════ -->
   <main class="dashboard">
 
-    <!-- ──────────────────────────────────────────
-         ROW 1  ·  KPI SUMMARY CARDS + SPARKLINES
-         ──────────────────────────────────────────
-         Four cards in a horizontal grid.
-         Each card has:
-           • eyebrow label
-           • large monospaced amount
-           • delta badge (30-day change)
-           • sparkline canvas (Chart.js, no axes)
+    <!-- ┌─────────────────────────────────────────┐
+         │  TAB 1 · DASHBOARD (Overview)           │
+         └─────────────────────────────────────────┘ -->
+    <div class="tab-panel tab-panel--active" id="tab-dashboard" role="tabpanel" aria-labelledby="tab-btn-dashboard">
 
-         JavaScript: renderKpiCards() + renderSparklines()
-         CSS: .kpi-grid, .kpi-card, .kpi-card__chart
-    ──────────────────────────────────────────── -->
-    <section class="kpi-grid" aria-label="Financial summary">
-
-      <!-- Income -->
-      <article class="kpi-card kpi-card--income">
-        <div class="kpi-card__top">
-          <span class="kpi-eyebrow">Total Income</span>
-          <span class="kpi-badge kpi-badge--income" id="incomeDelta">—</span>
-        </div>
-        <p class="kpi-amount" id="kpiIncome">$0.00</p>
-        <!--
-          Sparkline container:
-          Fixed height so Chart.js has a stable bounding box.
-          canvas id matches drawSparkline() call in dashboard.js
-        -->
-        <div class="kpi-spark">
-          <canvas id="sparkIncome"></canvas>
-        </div>
-      </article>
-
-      <!-- Expenses -->
-      <article class="kpi-card kpi-card--expense">
-        <div class="kpi-card__top">
-          <span class="kpi-eyebrow">Total Expenses</span>
-          <span class="kpi-badge kpi-badge--expense" id="expenseDelta">—</span>
-        </div>
-        <p class="kpi-amount" id="kpiExpense">$0.00</p>
-        <div class="kpi-spark">
-          <canvas id="sparkExpense"></canvas>
-        </div>
-      </article>
-
-      <!-- Savings -->
-      <article class="kpi-card kpi-card--saving">
-        <div class="kpi-card__top">
-          <span class="kpi-eyebrow">Total Savings</span>
-          <span class="kpi-badge kpi-badge--saving" id="savingDelta">—</span>
-        </div>
-        <p class="kpi-amount" id="kpiSaving">$0.00</p>
-        <div class="kpi-spark">
-          <canvas id="sparkSaving"></canvas>
-        </div>
-      </article>
-
-      <!-- Balance -->
-      <article class="kpi-card kpi-card--balance">
-        <div class="kpi-card__top">
-          <span class="kpi-eyebrow">Available Balance</span>
-          <span class="kpi-badge kpi-badge--balance" id="balanceDelta">income − exp − sav</span>
-        </div>
-        <p class="kpi-amount" id="kpiBalance">$0.00</p>
-        <div class="kpi-spark">
-          <canvas id="sparkBalance"></canvas>
-        </div>
-      </article>
-
-    </section>
-
-    <!-- ──────────────────────────────────────────
-         ROW 2  ·  CHART PANELS
-         ──────────────────────────────────────────
-         Left:  doughnut pie (category spending mix)
-         Right: grouped bar  (monthly income/expense/saving)
-
-         JavaScript: renderPieChart() + renderBarChart()
-         CSS: .charts-row, .chart-panel
-    ──────────────────────────────────────────── -->
-    <section class="charts-row">
-
-      <div class="chart-panel">
-        <header class="panel-header">
-          <div>
-            <p class="panel-eyebrow">Breakdown</p>
-            <h2 class="panel-title">Spending Mix</h2>
-          </div>
-        </header>
-        <div class="chart-area chart-area--pie">
-          <canvas id="pieChart"></canvas>
-          <p class="chart-empty hidden" id="pieEmpty">No expense data yet</p>
-        </div>
+      <!-- Insight Banner -->
+      <div class="insight-banner" id="insightBanner">
+        <span class="insight-icon">💡</span>
+        <span class="insight-text" id="insightText">Analysing your finances…</span>
       </div>
 
-      <div class="chart-panel chart-panel--wide">
-        <header class="panel-header">
+      <!-- KPI Grid -->
+      <section class="kpi-grid" aria-label="Financial summary">
+
+        <article class="kpi-card kpi-card--income">
+          <div class="kpi-card__top">
+            <span class="kpi-eyebrow">Total Income</span>
+            <span class="kpi-badge kpi-badge--income" id="incomeDelta">—</span>
+          </div>
+          <p class="kpi-amount" id="kpiIncome">$0.00</p>
+        </article>
+
+        <article class="kpi-card kpi-card--expense">
+          <div class="kpi-card__top">
+            <span class="kpi-eyebrow">Total Expenses</span>
+            <span class="kpi-badge kpi-badge--expense" id="expenseDelta">—</span>
+          </div>
+          <p class="kpi-amount" id="kpiExpense">$0.00</p>
+        </article>
+
+        <article class="kpi-card kpi-card--saving">
+          <div class="kpi-card__top">
+            <span class="kpi-eyebrow">Total Savings</span>
+            <span class="kpi-badge kpi-badge--saving" id="savingDelta">—</span>
+          </div>
+          <p class="kpi-amount" id="kpiSaving">$0.00</p>
+        </article>
+
+        <article class="kpi-card kpi-card--balance">
+          <div class="kpi-card__top">
+            <span class="kpi-eyebrow">Available Balance</span>
+            <span class="kpi-badge kpi-badge--balance" id="balanceDelta">income − exp − sav</span>
+          </div>
+          <p class="kpi-amount" id="kpiBalance">$0.00</p>
+        </article>
+
+      </section>
+
+      <!-- Add Form + Recent Transactions -->
+      <section class="bottom-row">
+
+        <!-- Add Transaction Form -->
+        <div class="panel panel--form">
+          <p class="panel-eyebrow">New Entry</p>
+          <h2 class="panel-title">Add Transaction</h2>
+
+          <div class="form-group">
+            <label for="amount" class="form-label">Amount ($)</label>
+            <input type="number" id="amount" class="form-input" placeholder="0.00" min="0.01" step="0.01"/>
+          </div>
+
+          <div class="form-group">
+            <label for="txnType" class="form-label">Type</label>
+            <select id="txnType" class="form-input form-select">
+              <option value="">Select type</option>
+              <option value="income">💰 Income</option>
+              <option value="expense">💸 Expense</option>
+              <option value="saving">🏦 Saving</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="category" class="form-label">Category</label>
+            <select id="category" class="form-input form-select">
+              <option value="">Select category</option>
+              <option value="Salary">💼 Salary</option>
+              <option value="Freelance">🖥 Freelance</option>
+              <option value="Food & Dining">🍽 Food &amp; Dining</option>
+              <option value="Transport">🚗 Transport</option>
+              <option value="Shopping">🛍 Shopping</option>
+              <option value="Entertainment">🎬 Entertainment</option>
+              <option value="Health">💊 Health</option>
+              <option value="Utilities">💡 Utilities</option>
+              <option value="Education">📚 Education</option>
+              <option value="Investment">📈 Investment</option>
+              <option value="Other">📦 Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="note" class="form-label">Note</label>
+            <input type="text" id="note" class="form-input" placeholder="Optional description" maxlength="120"/>
+          </div>
+
+          <button class="btn-primary" id="addTxnBtn">
+            <span class="btn-text">Add Transaction</span>
+            <span class="btn-icon" aria-hidden="true">＋</span>
+          </button>
+
+          <p class="form-message" id="formMessage"></p>
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="panel panel--recent">
+          <header class="panel-header panel-header--between">
+            <div>
+              <p class="panel-eyebrow">Latest Activity</p>
+              <h2 class="panel-title">Recent Transactions</h2>
+            </div>
+            <button class="btn-text-link" id="viewAllBtn">View all ↓</button>
+          </header>
+
+          <div class="recent-loader" id="recentLoader">
+            <div class="spinner spinner--sm"></div>
+          </div>
+
+          <ul class="recent-list" id="recentList" role="list"></ul>
+
+          <p class="recent-empty hidden" id="recentEmpty">
+            No transactions yet — add one using the form.
+          </p>
+        </div>
+
+      </section>
+
+      <!-- Full Transaction Table -->
+      <section class="panel panel--table" id="fullTableSection">
+        <header class="panel-header panel-header--between" style="margin-bottom:18px">
           <div>
-            <p class="panel-eyebrow">Over Time</p>
-            <h2 class="panel-title">Monthly Activity</h2>
+            <p class="panel-eyebrow">All Records</p>
+            <h2 class="panel-title">Transaction History</h2>
+          </div>
+          <div class="toolbar-controls">
+            <input  type="text"   id="searchInput"    class="ctrl-input"  placeholder="Search…"/>
+            <select               id="filterType"      class="ctrl-select">
+              <option value="">All Types</option>
+              <option value="income">Income</option>
+              <option value="expense">Expense</option>
+              <option value="saving">Saving</option>
+            </select>
+            <select               id="filterCategory"  class="ctrl-select">
+              <option value="">All Categories</option>
+              <option value="Salary">Salary</option>
+              <option value="Freelance">Freelance</option>
+              <option value="Food & Dining">Food &amp; Dining</option>
+              <option value="Transport">Transport</option>
+              <option value="Shopping">Shopping</option>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Health">Health</option>
+              <option value="Utilities">Utilities</option>
+              <option value="Education">Education</option>
+              <option value="Investment">Investment</option>
+              <option value="Other">Other</option>
+            </select>
           </div>
         </header>
-        <div class="chart-area chart-area--bar">
-          <canvas id="barChart"></canvas>
-          <p class="chart-empty hidden" id="barEmpty">No data yet</p>
-        </div>
-      </div>
 
-    </section>
-
-    <!-- ──────────────────────────────────────────
-         ROW 3  ·  ADD FORM  +  RECENT TRANSACTIONS
-         ──────────────────────────────────────────
-         Left:  add-transaction form
-         Right: Recent Transactions panel (V3 new)
-                Shows latest 5 transactions with type
-                colour-coding: income=teal, expense=red, saving=blue
-
-         JavaScript: handleAdd() + renderRecentTransactions()
-         CSS: .bottom-row, .panel--form, .panel--recent,
-              .recent-list, .recent-item
-    ──────────────────────────────────────────── -->
-    <section class="bottom-row">
-
-      <!-- Add Transaction Form -->
-      <div class="panel panel--form">
-        <p class="panel-eyebrow">New Entry</p>
-        <h2 class="panel-title">Add Transaction</h2>
-
-        <div class="form-group">
-          <label for="amount" class="form-label">Amount ($)</label>
-          <input type="number" id="amount" class="form-input"
-                 placeholder="0.00" min="0.01" step="0.01"/>
+        <div class="state-loading" id="loadingState">
+          <div class="spinner"></div>
+          <p>Fetching transactions…</p>
         </div>
 
-        <div class="form-group">
-          <label for="txnType" class="form-label">Type</label>
-          <select id="txnType" class="form-input form-select">
-            <option value="">Select type</option>
-            <option value="income">💰 Income</option>
-            <option value="expense">💸 Expense</option>
-            <option value="saving">🏦 Saving</option>
-          </select>
+        <div class="state-empty hidden" id="emptyState">
+          <span class="state-icon">◈</span>
+          <p class="state-title">No transactions yet</p>
+          <p class="state-sub">Add your first entry using the form above.</p>
         </div>
 
-        <div class="form-group">
-          <label for="category" class="form-label">Category</label>
-          <select id="category" class="form-input form-select">
-            <option value="">Select category</option>
-            <option value="Salary">💼 Salary</option>
-            <option value="Freelance">🖥 Freelance</option>
-            <option value="Food & Dining">🍽 Food &amp; Dining</option>
-            <option value="Transport">🚗 Transport</option>
-            <option value="Shopping">🛍 Shopping</option>
-            <option value="Entertainment">🎬 Entertainment</option>
-            <option value="Health">💊 Health</option>
-            <option value="Utilities">💡 Utilities</option>
-            <option value="Education">📚 Education</option>
-            <option value="Investment">📈 Investment</option>
-            <option value="Other">📦 Other</option>
-          </select>
+        <div class="table-scroll hidden" id="tableWrapper">
+          <table class="txn-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Category</th>
+                <th>Note</th>
+                <th class="th-amount">Amount</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="txnBody"></tbody>
+          </table>
         </div>
+      </section>
 
-        <div class="form-group">
-          <label for="note" class="form-label">Note</label>
-          <input type="text" id="note" class="form-input"
-                 placeholder="Optional description" maxlength="120"/>
-        </div>
+    </div><!-- /tab-dashboard -->
 
-        <button class="btn-primary" id="addTxnBtn">
-          <span class="btn-text">Add Transaction</span>
-          <span class="btn-icon" aria-hidden="true">＋</span>
-        </button>
 
-        <p class="form-message" id="formMessage"></p>
-      </div>
+    <!-- ┌─────────────────────────────────────────┐
+         │  TAB 2 · ANALYTICS                      │
+         └─────────────────────────────────────────┘ -->
+    <div class="tab-panel" id="tab-analytics" role="tabpanel" aria-labelledby="tab-btn-analytics">
 
-      <!-- Recent Transactions (V3 NEW) -->
-      <div class="panel panel--recent">
-        <header class="panel-header panel-header--between">
-          <div>
-            <p class="panel-eyebrow">Latest Activity</p>
-            <h2 class="panel-title">Recent Transactions</h2>
+      <!-- Insight Cards Row -->
+      <section class="analytics-insights" aria-label="Financial insights">
+
+        <div class="insight-card insight-card--gold">
+          <div class="insight-card__icon">🏆</div>
+          <div class="insight-card__body">
+            <p class="insight-card__label">Top Spending Category</p>
+            <p class="insight-card__value" id="topCategory">—</p>
           </div>
-          <button class="btn-text-link" id="viewAllBtn">View all ↓</button>
-        </header>
-
-        <!-- Loading spinner shown until first data arrives -->
-        <div class="recent-loader" id="recentLoader">
-          <div class="spinner spinner--sm"></div>
         </div>
 
-        <!--
-          List injected by renderRecentTransactions() in dashboard.js.
-          Each <li> gets class recent-item--income/expense/saving for colour.
-        -->
-        <ul class="recent-list" id="recentList" role="list"></ul>
+        <div class="insight-card insight-card--teal">
+          <div class="insight-card__icon">📊</div>
+          <div class="insight-card__body">
+            <p class="insight-card__label">Monthly Spend vs Last Month</p>
+            <p class="insight-card__value" id="monthlyComparison">—</p>
+          </div>
+        </div>
 
-        <p class="recent-empty hidden" id="recentEmpty">
-          No transactions yet — add one using the form.
+        <div class="insight-card insight-card--blue">
+          <div class="insight-card__icon">💹</div>
+          <div class="insight-card__body">
+            <p class="insight-card__label">Savings Rate</p>
+            <p class="insight-card__value" id="savingsRate">—</p>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Charts Row -->
+      <section class="charts-row">
+
+        <div class="chart-panel">
+          <header class="panel-header">
+            <div>
+              <p class="panel-eyebrow">Breakdown</p>
+              <h2 class="panel-title">Spending Mix</h2>
+            </div>
+          </header>
+          <div class="chart-area chart-area--pie">
+            <canvas id="pieChart"></canvas>
+            <p class="chart-empty hidden" id="pieEmpty">No expense data yet</p>
+          </div>
+        </div>
+
+        <div class="chart-panel chart-panel--wide">
+          <header class="panel-header">
+            <div>
+              <p class="panel-eyebrow">Over Time</p>
+              <h2 class="panel-title">Monthly Activity</h2>
+            </div>
+          </header>
+          <div class="chart-area chart-area--bar">
+            <canvas id="barChart"></canvas>
+            <p class="chart-empty hidden" id="barEmpty">No data yet</p>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Sparkline Trends -->
+      <section class="analytics-trends">
+        <div class="chart-panel chart-panel--trend">
+          <header class="panel-header">
+            <div>
+              <p class="panel-eyebrow">Trends</p>
+              <h2 class="panel-title">Income &amp; Expense Over Time</h2>
+            </div>
+          </header>
+          <div class="chart-area chart-area--line">
+            <canvas id="lineChart"></canvas>
+            <p class="chart-empty hidden" id="lineEmpty">No data yet</p>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /tab-analytics -->
+
+
+    <!-- ┌─────────────────────────────────────────┐
+         │  TAB 3 · ACCOUNTS                       │
+         └─────────────────────────────────────────┘ -->
+    <div class="tab-panel" id="tab-accounts" role="tabpanel" aria-labelledby="tab-btn-accounts">
+
+      <section class="accounts-layout">
+
+        <!-- Account Cards Grid -->
+        <div class="accounts-main">
+          <div class="panel-header panel-header--between" style="margin-bottom:18px">
+            <div>
+              <p class="panel-eyebrow">Balances</p>
+              <h2 class="panel-title">My Accounts</h2>
+            </div>
+            <button class="btn-primary btn-primary--sm" id="openAddAccount">
+              <span>＋</span> Add Account
+            </button>
+          </div>
+
+          <div class="accounts-grid" id="accountsGrid">
+            <!-- Default accounts rendered by JS -->
+          </div>
+        </div>
+
+        <!-- Add Account Form (collapsible) -->
+        <div class="panel panel--account-form hidden" id="addAccountPanel">
+          <p class="panel-eyebrow">New Account</p>
+          <h2 class="panel-title" style="margin-bottom:16px">Add Account</h2>
+
+          <div class="form-group">
+            <label for="acctName" class="form-label">Account Name</label>
+            <input type="text" id="acctName" class="form-input" placeholder="e.g. HDFC Bank"/>
+          </div>
+
+          <div class="form-group">
+            <label for="acctType" class="form-label">Type</label>
+            <select id="acctType" class="form-input form-select">
+              <option value="">Select type</option>
+              <option value="bank">🏦 Bank</option>
+              <option value="cash">💵 Cash</option>
+              <option value="wallet">👛 Wallet</option>
+              <option value="investment">📈 Investment</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="acctBalance" class="form-label">Opening Balance ($)</label>
+            <input type="number" id="acctBalance" class="form-input" placeholder="0.00" min="0" step="0.01"/>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-top:4px">
+            <button class="btn-primary" id="saveAccountBtn" style="flex:1">
+              <span class="btn-text">Save Account</span>
+            </button>
+            <button class="btn-cancel" id="cancelAccountBtn">Cancel</button>
+          </div>
+
+          <p class="form-message" id="acctFormMessage"></p>
+        </div>
+
+      </section>
+
+      <!-- Account Activity Note -->
+      <div class="panel accounts-note">
+        <p class="panel-eyebrow">Note</p>
+        <p style="font-size:0.85rem;color:var(--text-sub);margin-top:4px;line-height:1.7">
+          Account balances are stored locally in your browser.
+          Link transactions to accounts for full balance tracking (coming soon).
         </p>
       </div>
 
-    </section>
-
-    <!-- ──────────────────────────────────────────
-         ROW 4  ·  FULL TRANSACTION TABLE
-         ──────────────────────────────────────────
-         Search + type filter + category filter.
-         Full history with delete buttons.
-
-         JavaScript: renderTable() + handleDelete()
-         CSS: .panel--table, .txn-table
-    ──────────────────────────────────────────── -->
-    <section class="panel panel--table" id="fullTableSection">
-      <header class="panel-header panel-header--between" style="margin-bottom:18px">
-        <div>
-          <p class="panel-eyebrow">All Records</p>
-          <h2 class="panel-title">Transaction History</h2>
-        </div>
-        <div class="toolbar-controls">
-          <input  type="text"   id="searchInput"    class="ctrl-input"  placeholder="Search…"/>
-          <select               id="filterType"      class="ctrl-select">
-            <option value="">All Types</option>
-            <option value="income">Income</option>
-            <option value="expense">Expense</option>
-            <option value="saving">Saving</option>
-          </select>
-          <select               id="filterCategory"  class="ctrl-select">
-            <option value="">All Categories</option>
-            <option value="Salary">Salary</option>
-            <option value="Freelance">Freelance</option>
-            <option value="Food & Dining">Food &amp; Dining</option>
-            <option value="Transport">Transport</option>
-            <option value="Shopping">Shopping</option>
-            <option value="Entertainment">Entertainment</option>
-            <option value="Health">Health</option>
-            <option value="Utilities">Utilities</option>
-            <option value="Education">Education</option>
-            <option value="Investment">Investment</option>
-            <option value="Other">Other</option>
-          </select>
-        </div>
-      </header>
-
-      <div class="state-loading" id="loadingState">
-        <div class="spinner"></div>
-        <p>Fetching transactions…</p>
-      </div>
-
-      <div class="state-empty hidden" id="emptyState">
-        <span class="state-icon">◈</span>
-        <p class="state-title">No transactions yet</p>
-        <p class="state-sub">Add your first entry using the form above.</p>
-      </div>
-
-      <div class="table-scroll hidden" id="tableWrapper">
-        <table class="txn-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Type</th>
-              <th>Category</th>
-              <th>Note</th>
-              <th class="th-amount">Amount</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="txnBody"></tbody>
-        </table>
-      </div>
-    </section>
+    </div><!-- /tab-accounts -->
 
   </main>
 
-  <!-- Toast notification -->
+  <!-- Toast -->
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="../js/dashboard.js"></script>
+  <script src="../js/tabs.js"></script>
 </body>
 </html>
