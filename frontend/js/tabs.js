@@ -52,7 +52,7 @@ function switchTab(targetId) {
   }
 
   if (targetId === 'accounts') {
-    renderAccountCards();
+    refreshAccountsTab();
   }
 }
 
@@ -299,105 +299,348 @@ function renderInsightBanner() {
    §E  ACCOUNTS (localStorage-backed)
 ───────────────────────────────────────────────────────────── */
 
-const ACCOUNTS_KEY = 'mp_accounts';
+const ACCOUNTS_KEY      = 'mp_accounts';
+const TRANSFER_LOG_KEY  = 'mp_transfer_log';
 
 const ACCT_META = {
-  bank:       { emoji: '🏦', label: 'Bank Account' },
-  cash:       { emoji: '💵', label: 'Cash' },
-  wallet:     { emoji: '👛', label: 'Wallet' },
-  investment: { emoji: '📈', label: 'Investment' },
+  bank:       { emoji: '🏦', label: 'Bank Account',  color: '#4e8ef7', colorDim: 'rgba(78,142,247,0.08)'  },
+  cash:       { emoji: '💵', label: 'Cash',           color: '#0ecb81', colorDim: 'rgba(14,203,129,0.08)' },
+  wallet:     { emoji: '👛', label: 'Wallet',         color: '#f0b429', colorDim: 'rgba(240,180,41,0.08)' },
+  investment: { emoji: '📈', label: 'Investment',     color: '#a78bfa', colorDim: 'rgba(167,139,250,0.08)'},
 };
 
-/** Load accounts from localStorage */
+/* ── State ── */
+let acctViewMode = 'grid'; // 'grid' | 'list'
+
+/* ── Storage helpers ── */
 function loadAccounts() {
-  try {
-    return JSON.parse(localStorage.getItem(ACCOUNTS_KEY)) || getDefaultAccounts();
-  } catch {
-    return getDefaultAccounts();
-  }
+  try { return JSON.parse(localStorage.getItem(ACCOUNTS_KEY)) || getDefaultAccounts(); }
+  catch { return getDefaultAccounts(); }
 }
+function saveAccounts(arr) { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(arr)); }
 
-/** Save accounts array to localStorage */
-function saveAccounts(accounts) {
-  localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+function loadTransferLog() {
+  try { return JSON.parse(localStorage.getItem(TRANSFER_LOG_KEY)) || []; }
+  catch { return []; }
 }
+function saveTransferLog(arr) { localStorage.setItem(TRANSFER_LOG_KEY, JSON.stringify(arr)); }
 
-/** First-time default accounts */
 function getDefaultAccounts() {
   return [
-    { id: 'acc_cash',   name: 'Cash',       type: 'cash',   balance: 0 },
-    { id: 'acc_bank',   name: 'Bank',        type: 'bank',   balance: 0 },
-    { id: 'acc_wallet', name: 'Wallet',      type: 'wallet', balance: 0 },
+    { id: 'acc_cash',   name: 'Cash',   type: 'cash',   balance: 0, color: '#0ecb81' },
+    { id: 'acc_bank',   name: 'Bank',   type: 'bank',   balance: 0, color: '#4e8ef7' },
+    { id: 'acc_wallet', name: 'Wallet', type: 'wallet', balance: 0, color: '#f0b429' },
   ];
 }
 
-/** Render the accounts grid */
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/* ── Net Worth Hero ── */
+function renderNetworthHero() {
+  const accounts = loadAccounts();
+  const total    = accounts.reduce((s, a) => s + (a.balance || 0), 0);
+  const count    = accounts.length;
+
+  const totalEl = document.getElementById('networthTotal');
+  const countEl = document.getElementById('networthCount');
+  if (totalEl) totalEl.textContent = fmt(total);
+  if (countEl) countEl.textContent = count;
+
+  // Proportional bars
+  const barsEl = document.getElementById('networthBars');
+  if (!barsEl) return;
+
+  if (!accounts.length || total === 0) {
+    barsEl.innerHTML = '<p style="font-size:0.78rem;color:var(--text-muted)">No accounts yet</p>';
+    return;
+  }
+
+  barsEl.innerHTML = accounts.map(a => {
+    const meta = ACCT_META[a.type] || { color: '#888' };
+    const color = a.color || meta.color;
+    const pct   = total > 0 ? Math.max(2, (a.balance / total) * 100) : 0;
+    return `
+      <div class="nw-bar-row">
+        <span class="nw-bar-label">${escHtml(a.name)}</span>
+        <div class="nw-bar-track">
+          <div class="nw-bar-fill" style="width:${pct.toFixed(1)}%;background:${color}"></div>
+        </div>
+        <span class="nw-bar-amount">${fmt(a.balance)}</span>
+      </div>`;
+  }).join('');
+}
+
+/* ── Summary Strip (type totals) ── */
+function renderSummaryStrip() {
+  const el = document.getElementById('acctSummaryStrip');
+  if (!el) return;
+
+  const types = ['bank', 'cash', 'wallet', 'investment'];
+  const accounts = loadAccounts();
+
+  el.innerHTML = types.map(t => {
+    const meta  = ACCT_META[t];
+    const total = accounts.filter(a => a.type === t).reduce((s, a) => s + (a.balance || 0), 0);
+    return `
+      <div class="acct-summary-chip">
+        <span class="acct-summary-chip__emoji">${meta.emoji}</span>
+        <div class="acct-summary-chip__info">
+          <span class="acct-summary-chip__label">${meta.label}</span>
+          <span class="acct-summary-chip__val">${fmt(total)}</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* ── Account Cards ── */
 function renderAccountCards() {
   const grid = document.getElementById('accountsGrid');
   if (!grid) return;
 
   const accounts = loadAccounts();
 
+  // Apply view mode
+  grid.className = `accounts-grid${acctViewMode === 'list' ? ' accounts-grid--list' : ''}`;
+
   if (!accounts.length) {
     grid.innerHTML = `
       <div class="accounts-empty">
         <span class="accounts-empty__icon">🏦</span>
-        <p>No accounts yet. Add one using the form.</p>
+        <p class="accounts-empty__title">No accounts yet</p>
+        <p>Click "Add Account" to get started</p>
       </div>`;
+    renderNetworthHero();
+    renderSummaryStrip();
+    populateTransferSelects();
     return;
   }
 
   grid.innerHTML = accounts.map((a, idx) => {
-    const meta = ACCT_META[a.type] || { emoji: '💳', label: a.type };
+    const meta     = ACCT_META[a.type] || { emoji: '💳', label: a.type, color: '#888', colorDim: 'rgba(136,136,136,0.08)' };
+    const color    = a.color || meta.color;
+    const colorDim = hexToRgba(color, 0.08);
     return `
-      <div class="acct-card acct-card--${a.type}" style="animation-delay:${idx * 60}ms">
-        <span class="acct-card__emoji">${meta.emoji}</span>
+      <div class="acct-card" style="--acct-color:${color};--acct-color-dim:${colorDim};animation-delay:${idx * 60}ms">
+        <div class="acct-card__header">
+          <div class="acct-card__emoji-wrap">${meta.emoji}</div>
+          <button class="acct-card__menu-btn btn-acct-del" data-id="${a.id}" title="Remove account">✕</button>
+        </div>
         <p class="acct-card__name">${escHtml(a.name)}</p>
-        <p class="acct-card__type">${meta.label}</p>
+        <span class="acct-card__type-badge">${meta.label}</span>
         <p class="acct-card__balance">${fmt(a.balance)}</p>
-        <div class="acct-card__actions">
-          <button class="btn-acct-del" data-id="${a.id}" aria-label="Delete ${escHtml(a.name)}">
-            ✕ Remove
-          </button>
+        <p class="acct-card__balance-label">Current Balance</p>
+        <div class="acct-card__footer">
+          <button class="acct-card__action-btn btn-acct-topup" data-id="${a.id}">＋ Top Up</button>
+          <button class="acct-card__action-btn btn-acct-withdraw" data-id="${a.id}">－ Withdraw</button>
+          <button class="acct-card__action-btn acct-card__action-btn--danger btn-acct-del" data-id="${a.id}">✕</button>
         </div>
       </div>`;
   }).join('');
 
-  // Delete listeners
+  // Delete
   grid.querySelectorAll('.btn-acct-del').forEach(btn => {
     btn.addEventListener('click', () => {
-      const accounts = loadAccounts().filter(a => a.id !== btn.dataset.id);
-      saveAccounts(accounts);
-      renderAccountCards();
+      const updated = loadAccounts().filter(a => a.id !== btn.dataset.id);
+      saveAccounts(updated);
+      refreshAccountsTab();
     });
   });
+
+  // Top Up
+  grid.querySelectorAll('.btn-acct-topup').forEach(btn => {
+    btn.addEventListener('click', () => promptAdjustBalance(btn.dataset.id, 'topup'));
+  });
+
+  // Withdraw
+  grid.querySelectorAll('.btn-acct-withdraw').forEach(btn => {
+    btn.addEventListener('click', () => promptAdjustBalance(btn.dataset.id, 'withdraw'));
+  });
+
+  renderNetworthHero();
+  renderSummaryStrip();
+  populateTransferSelects();
 }
 
-/** Simple HTML escape */
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+/* ── Balance Adjust (inline prompt) ── */
+function promptAdjustBalance(id, mode) {
+  const accounts = loadAccounts();
+  const acct     = accounts.find(a => a.id === id);
+  if (!acct) return;
+
+  const label  = mode === 'topup' ? 'Top up' : 'Withdraw';
+  const rawAmt = window.prompt(`${label} amount for "${acct.name}" ($):`, '');
+  const amt    = parseFloat(rawAmt);
+
+  if (!rawAmt || isNaN(amt) || amt <= 0) return;
+
+  if (mode === 'topup') {
+    acct.balance = (acct.balance || 0) + amt;
+  } else {
+    const newBal = (acct.balance || 0) - amt;
+    if (newBal < 0) {
+      showToast('Insufficient balance.', 'error');
+      return;
+    }
+    acct.balance = newBal;
+  }
+
+  saveAccounts(accounts);
+  showToast(`${label} of ${fmt(amt)} applied ✓`);
+  refreshAccountsTab();
 }
 
-/* Add Account form toggle */
+/* ── Transfer Selects ── */
+function populateTransferSelects() {
+  const accounts = loadAccounts();
+  const opts     = ['<option value="">Select account</option>',
+    ...accounts.map(a => `<option value="${a.id}">${escHtml(a.name)} (${fmt(a.balance)})</option>`)
+  ].join('');
+
+  const from = document.getElementById('transferFrom');
+  const to   = document.getElementById('transferTo');
+  if (from) from.innerHTML = opts;
+  if (to)   to.innerHTML   = opts;
+}
+
+/* ── Transfer Log ── */
+function renderTransferLog() {
+  const list  = document.getElementById('transferLogList');
+  const empty = document.getElementById('transferLogEmpty');
+  if (!list) return;
+
+  const log = loadTransferLog();
+
+  if (!log.length) {
+    list.innerHTML = '';
+    empty?.classList.remove('hidden');
+    return;
+  }
+  empty?.classList.add('hidden');
+
+  list.innerHTML = [...log].reverse().slice(0, 10).map((entry, i) => `
+    <li class="transfer-log-item" style="animation-delay:${i * 40}ms">
+      <span class="transfer-log-arrow">→</span>
+      <div class="transfer-log-desc">
+        <span class="transfer-log-route">${escHtml(entry.fromName)} → ${escHtml(entry.toName)}</span>
+        <span class="transfer-log-date">${entry.date}</span>
+      </div>
+      <span class="transfer-log-amount">${fmt(entry.amount)}</span>
+    </li>`).join('');
+}
+
+/* ── Do Transfer ── */
+document.getElementById('doTransferBtn')?.addEventListener('click', () => {
+  const fromId = document.getElementById('transferFrom')?.value;
+  const toId   = document.getElementById('transferTo')?.value;
+  const amount = parseFloat(document.getElementById('transferAmount')?.value);
+  const msgEl  = document.getElementById('transferMessage');
+
+  const showMsg = (text, cls = 'error') => {
+    if (!msgEl) return;
+    msgEl.textContent = text;
+    msgEl.className   = `form-message form-message--${cls} form-message--show`;
+    setTimeout(() => { msgEl.className = 'form-message'; msgEl.textContent = ''; }, 3000);
+  };
+
+  if (!fromId)          { showMsg('Select a source account.'); return; }
+  if (!toId)            { showMsg('Select a destination account.'); return; }
+  if (fromId === toId)  { showMsg('Cannot transfer to the same account.'); return; }
+  if (!amount || amount <= 0) { showMsg('Enter a valid amount.'); return; }
+
+  const accounts = loadAccounts();
+  const from     = accounts.find(a => a.id === fromId);
+  const to       = accounts.find(a => a.id === toId);
+  if (!from || !to) return;
+
+  if ((from.balance || 0) < amount) { showMsg('Insufficient balance in source account.'); return; }
+
+  from.balance = (from.balance || 0) - amount;
+  to.balance   = (to.balance   || 0) + amount;
+  saveAccounts(accounts);
+
+  // Log
+  const log = loadTransferLog();
+  log.push({
+    fromName: from.name,
+    toName:   to.name,
+    amount,
+    date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+  });
+  saveTransferLog(log);
+
+  showMsg('Transfer successful!', 'success');
+  showToast(`Transferred ${fmt(amount)} → ${to.name} ✓`);
+  document.getElementById('transferAmount').value = '';
+  refreshAccountsTab();
+});
+
+/* ── Swap transfer selects ── */
+document.getElementById('swapTransferBtn')?.addEventListener('click', () => {
+  const from = document.getElementById('transferFrom');
+  const to   = document.getElementById('transferTo');
+  if (!from || !to) return;
+  const tmp = from.value;
+  from.value = to.value;
+  to.value   = tmp;
+});
+
+/* ── Clear transfer log ── */
+document.getElementById('clearTransferLog')?.addEventListener('click', () => {
+  if (!confirm('Clear all transfer history?')) return;
+  saveTransferLog([]);
+  renderTransferLog();
+});
+
+/* ── Add Account Form ── */
+let selectedColor = '#0ecb81';
+
+// Type pills
+document.querySelectorAll('.acct-type-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('.acct-type-pill').forEach(p => p.classList.remove('acct-type-pill--active'));
+    pill.classList.add('acct-type-pill--active');
+    document.getElementById('acctType').value = pill.dataset.type;
+
+    // Auto-set colour to match type default
+    const meta = ACCT_META[pill.dataset.type];
+    if (meta) {
+      selectedColor = meta.color;
+      document.getElementById('acctColor').value = selectedColor;
+      document.querySelectorAll('.acct-color-dot').forEach(d => {
+        d.classList.toggle('acct-color-dot--active', d.dataset.color === selectedColor);
+      });
+    }
+  });
+});
+
+// Colour dots
+document.querySelectorAll('.acct-color-dot').forEach(dot => {
+  dot.addEventListener('click', () => {
+    document.querySelectorAll('.acct-color-dot').forEach(d => d.classList.remove('acct-color-dot--active'));
+    dot.classList.add('acct-color-dot--active');
+    selectedColor = dot.dataset.color;
+    document.getElementById('acctColor').value = selectedColor;
+  });
+});
+
+// Open / close
 document.getElementById('openAddAccount')?.addEventListener('click', () => {
-  const panel = document.getElementById('addAccountPanel');
-  panel?.classList.remove('hidden');
+  document.getElementById('addAccountPanel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   document.getElementById('acctName')?.focus();
 });
 
-document.getElementById('cancelAccountBtn')?.addEventListener('click', () => {
-  document.getElementById('addAccountPanel')?.classList.add('hidden');
-  clearAccountForm();
-});
+document.getElementById('cancelAccountBtn')?.addEventListener('click', clearAccountForm);
 
+// Save
 document.getElementById('saveAccountBtn')?.addEventListener('click', () => {
   const name    = document.getElementById('acctName')?.value.trim();
   const type    = document.getElementById('acctType')?.value;
   const balance = parseFloat(document.getElementById('acctBalance')?.value) || 0;
+  const color   = document.getElementById('acctColor')?.value || '#0ecb81';
   const msgEl   = document.getElementById('acctFormMessage');
 
   const showMsg = (text, cls = 'error') => {
@@ -407,29 +650,49 @@ document.getElementById('saveAccountBtn')?.addEventListener('click', () => {
     setTimeout(() => { msgEl.className = 'form-message'; msgEl.textContent = ''; }, 3000);
   };
 
-  if (!name) { showMsg('Please enter an account name.'); return; }
-  if (!type) { showMsg('Please select an account type.'); return; }
+  if (!name) { showMsg('Enter an account name.'); return; }
+  if (!type) { showMsg('Select an account type.'); return; }
 
   const accounts = loadAccounts();
-  accounts.push({
-    id:      `acc_${Date.now()}`,
-    name,
-    type,
-    balance,
-  });
+  accounts.push({ id: `acc_${Date.now()}`, name, type, balance, color });
   saveAccounts(accounts);
-  renderAccountCards();
-
   showMsg('Account added!', 'success');
-  document.getElementById('addAccountPanel')?.classList.add('hidden');
+  showToast(`"${name}" account created ✓`);
   clearAccountForm();
+  refreshAccountsTab();
 });
 
 function clearAccountForm() {
-  ['acctName', 'acctType', 'acctBalance'].forEach(id => {
+  ['acctName', 'acctBalance'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  document.getElementById('acctType').value = '';
+  document.querySelectorAll('.acct-type-pill').forEach(p => p.classList.remove('acct-type-pill--active'));
+}
+
+/* ── View toggle ── */
+document.querySelectorAll('.acct-view-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.acct-view-btn').forEach(b => b.classList.remove('acct-view-btn--active'));
+    btn.classList.add('acct-view-btn--active');
+    acctViewMode = btn.dataset.view;
+    renderAccountCards();
+  });
+});
+
+/* ── Master refresh for accounts tab ── */
+function refreshAccountsTab() {
+  renderAccountCards();
+  renderTransferLog();
+}
+
+/* ── Hex → rgba helper ── */
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
 }
 
 
