@@ -85,6 +85,7 @@
             <span class="kpi-badge kpi-badge--income" id="incomeDelta">—</span>
           </div>
           <p class="kpi-amount" id="kpiIncome">$0.00</p>
+          <div class="kpi-spark"><canvas id="sparkIncome"></canvas></div>
         </article>
 
         <article class="kpi-card kpi-card--expense">
@@ -93,6 +94,7 @@
             <span class="kpi-badge kpi-badge--expense" id="expenseDelta">—</span>
           </div>
           <p class="kpi-amount" id="kpiExpense">$0.00</p>
+          <div class="kpi-spark"><canvas id="sparkExpense"></canvas></div>
         </article>
 
         <article class="kpi-card kpi-card--saving">
@@ -101,6 +103,7 @@
             <span class="kpi-badge kpi-badge--saving" id="savingDelta">—</span>
           </div>
           <p class="kpi-amount" id="kpiSaving">$0.00</p>
+          <div class="kpi-spark"><canvas id="sparkSaving"></canvas></div>
         </article>
 
         <article class="kpi-card kpi-card--balance">
@@ -109,6 +112,7 @@
             <span class="kpi-badge kpi-badge--balance" id="balanceDelta">income − exp − sav</span>
           </div>
           <p class="kpi-amount" id="kpiBalance">$0.00</p>
+          <div class="kpi-spark"><canvas id="sparkBalance"></canvas></div>
         </article>
 
       </section>
@@ -342,70 +346,147 @@
          └─────────────────────────────────────────┘ -->
     <div class="tab-panel" id="tab-accounts" role="tabpanel" aria-labelledby="tab-btn-accounts">
 
-      <section class="accounts-layout">
+      <!-- ── Net Worth Hero Banner ── -->
+      <div class="networth-hero">
+        <div class="networth-hero__left">
+          <p class="networth-hero__label">Total Net Worth</p>
+          <p class="networth-hero__amount" id="networthTotal">$0.00</p>
+          <p class="networth-hero__sub" id="networthSub">across <span id="networthCount">0</span> accounts</p>
+        </div>
+        <div class="networth-hero__bars" id="networthBars">
+          <!-- Rendered by JS: proportional coloured bars -->
+        </div>
+        <button class="btn-add-account" id="openAddAccount">
+          <span class="btn-add-account__icon">＋</span>
+          <span>Add Account</span>
+        </button>
+      </div>
 
-        <!-- Account Cards Grid -->
-        <div class="accounts-main">
-          <div class="panel-header panel-header--between" style="margin-bottom:18px">
-            <div>
-              <p class="panel-eyebrow">Balances</p>
-              <h2 class="panel-title">My Accounts</h2>
+      <!-- ── Accounts Summary Strip ── -->
+      <div class="acct-summary-strip" id="acctSummaryStrip">
+        <!-- 4 type totals rendered by JS -->
+      </div>
+
+      <!-- ── Main two-column layout ── -->
+      <div class="accounts-body">
+
+        <!-- LEFT: Account Cards -->
+        <div class="accounts-cards-col">
+          <div class="acct-section-header">
+            <p class="panel-eyebrow">All Accounts</p>
+            <div class="acct-view-toggle">
+              <button class="acct-view-btn acct-view-btn--active" data-view="grid" title="Grid view">⊞</button>
+              <button class="acct-view-btn" data-view="list" title="List view">☰</button>
             </div>
-            <button class="btn-primary btn-primary--sm" id="openAddAccount">
-              <span>＋</span> Add Account
-            </button>
           </div>
-
           <div class="accounts-grid" id="accountsGrid">
-            <!-- Default accounts rendered by JS -->
+            <!-- Rendered by JS -->
           </div>
         </div>
 
-        <!-- Add Account Form (collapsible) -->
-        <div class="panel panel--account-form hidden" id="addAccountPanel">
-          <p class="panel-eyebrow">New Account</p>
-          <h2 class="panel-title" style="margin-bottom:16px">Add Account</h2>
+        <!-- RIGHT: Sidebar (Add Form + Recent Activity) -->
+        <div class="accounts-sidebar">
 
-          <div class="form-group">
-            <label for="acctName" class="form-label">Account Name</label>
-            <input type="text" id="acctName" class="form-input" placeholder="e.g. HDFC Bank"/>
-          </div>
+          <!-- Add Account Form -->
+          <div class="panel panel--account-form" id="addAccountPanel">
+            <div class="acct-form-header">
+              <div>
+                <p class="panel-eyebrow">New Account</p>
+                <h2 class="panel-title">Add Account</h2>
+              </div>
+              <button class="acct-form-close" id="cancelAccountBtn" title="Close">✕</button>
+            </div>
 
-          <div class="form-group">
-            <label for="acctType" class="form-label">Type</label>
-            <select id="acctType" class="form-input form-select">
-              <option value="">Select type</option>
-              <option value="bank">🏦 Bank</option>
-              <option value="cash">💵 Cash</option>
-              <option value="wallet">👛 Wallet</option>
-              <option value="investment">📈 Investment</option>
-            </select>
-          </div>
+            <!-- Type Selector Pills -->
+            <div class="acct-type-pills">
+              <button class="acct-type-pill" data-type="bank">🏦 Bank</button>
+              <button class="acct-type-pill" data-type="cash">💵 Cash</button>
+              <button class="acct-type-pill" data-type="wallet">👛 Wallet</button>
+              <button class="acct-type-pill" data-type="investment">📈 Invest</button>
+            </div>
+            <input type="hidden" id="acctType"/>
 
-          <div class="form-group">
-            <label for="acctBalance" class="form-label">Opening Balance ($)</label>
-            <input type="number" id="acctBalance" class="form-input" placeholder="0.00" min="0" step="0.01"/>
-          </div>
+            <div class="form-group" style="margin-top:14px">
+              <label for="acctName" class="form-label">Account Name</label>
+              <input type="text" id="acctName" class="form-input" placeholder="e.g. HDFC Savings"/>
+            </div>
 
-          <div style="display:flex;gap:10px;margin-top:4px">
-            <button class="btn-primary" id="saveAccountBtn" style="flex:1">
+            <div class="form-group">
+              <label for="acctBalance" class="form-label">Opening Balance ($)</label>
+              <input type="number" id="acctBalance" class="form-input" placeholder="0.00" min="0" step="0.01"/>
+            </div>
+
+            <div class="form-group">
+              <label for="acctColor" class="form-label">Card Colour</label>
+              <div class="acct-color-row" id="acctColorRow">
+                <span class="acct-color-dot acct-color-dot--active" data-color="#0ecb81" style="background:#0ecb81"></span>
+                <span class="acct-color-dot" data-color="#4e8ef7" style="background:#4e8ef7"></span>
+                <span class="acct-color-dot" data-color="#f0b429" style="background:#f0b429"></span>
+                <span class="acct-color-dot" data-color="#f6475f" style="background:#f6475f"></span>
+                <span class="acct-color-dot" data-color="#a78bfa" style="background:#a78bfa"></span>
+                <span class="acct-color-dot" data-color="#fb923c" style="background:#fb923c"></span>
+              </div>
+              <input type="hidden" id="acctColor" value="#0ecb81"/>
+            </div>
+
+            <button class="btn-primary" id="saveAccountBtn">
               <span class="btn-text">Save Account</span>
+              <span class="btn-icon">＋</span>
             </button>
-            <button class="btn-cancel" id="cancelAccountBtn">Cancel</button>
+
+            <p class="form-message" id="acctFormMessage"></p>
           </div>
 
-          <p class="form-message" id="acctFormMessage"></p>
+          <!-- Quick Transfer Panel -->
+          <div class="panel panel--transfer">
+            <p class="panel-eyebrow">Move Money</p>
+            <h2 class="panel-title" style="margin-bottom:14px">Quick Transfer</h2>
+
+            <div class="form-group">
+              <label class="form-label">From</label>
+              <select id="transferFrom" class="form-input form-select">
+                <option value="">Select account</option>
+              </select>
+            </div>
+            <div class="transfer-swap-row">
+              <div class="transfer-line"></div>
+              <button class="transfer-swap-btn" id="swapTransferBtn" title="Swap accounts">⇅</button>
+              <div class="transfer-line"></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">To</label>
+              <select id="transferTo" class="form-input form-select">
+                <option value="">Select account</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="transferAmount" class="form-label">Amount ($)</label>
+              <input type="number" id="transferAmount" class="form-input" placeholder="0.00" min="0.01" step="0.01"/>
+            </div>
+            <button class="btn-primary" id="doTransferBtn">
+              <span class="btn-text">Transfer Funds</span>
+              <span class="btn-icon">→</span>
+            </button>
+            <p class="form-message" id="transferMessage"></p>
+          </div>
+
+        </div><!-- /accounts-sidebar -->
+
+      </div><!-- /accounts-body -->
+
+      <!-- ── Transfer History ── -->
+      <div class="panel panel--transfer-log">
+        <div class="panel-header panel-header--between">
+          <div>
+            <p class="panel-eyebrow">Transfer Log</p>
+            <h2 class="panel-title">Recent Transfers</h2>
+          </div>
+          <button class="btn-text-link" id="clearTransferLog">Clear log</button>
         </div>
-
-      </section>
-
-      <!-- Account Activity Note -->
-      <div class="panel accounts-note">
-        <p class="panel-eyebrow">Note</p>
-        <p style="font-size:0.85rem;color:var(--text-sub);margin-top:4px;line-height:1.7">
-          Account balances are stored locally in your browser.
-          Link transactions to accounts for full balance tracking (coming soon).
-        </p>
+        <ul class="transfer-log-list" id="transferLogList">
+          <!-- Rendered by JS -->
+        </ul>
+        <p class="transfer-log-empty hidden" id="transferLogEmpty">No transfers yet.</p>
       </div>
 
     </div><!-- /tab-accounts -->
